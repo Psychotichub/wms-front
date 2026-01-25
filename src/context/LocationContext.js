@@ -578,6 +578,30 @@ export const LocationProvider = ({ children }) => {
   };
 
   const handleCheckIn = async (geofence, currentLoc) => {
+    // First, verify current attendance status to avoid "Already checked in" errors
+    try {
+      const currentStatus = await verifyAttendanceStatus();
+      if (currentStatus?.isCheckedIn) {
+        console.log('[LocationContext] handleCheckIn: Already checked in, syncing state', currentStatus);
+        // Sync frontend state with backend
+        if (currentStatus.currentAttendance) {
+          setAttendanceStatus({
+            isCheckedIn: true,
+            checkInTime: new Date(currentStatus.currentAttendance.checkInTime),
+            checkOutTime: null,
+            locationName: currentStatus.currentAttendance.location?.locationName || geofence.name,
+            elapsedTime: currentStatus.currentAttendance.elapsedTime || 0,
+            validationStatus: currentStatus.currentAttendance.validationStatus,
+            dayKey: getLocalDayKey()
+          });
+        }
+        return; // Already checked in, no need to check in again
+      }
+    } catch (error) {
+      console.warn('[LocationContext] handleCheckIn: Failed to verify attendance status, proceeding with check-in', error);
+      // Continue with check-in attempt if verification fails
+    }
+
     const deviceInfo = getDeviceInfo();
     const checkInData = {
       locationId: geofence.id,
@@ -595,37 +619,133 @@ export const LocationProvider = ({ children }) => {
       locationName: checkInData.locationName,
       latitude: checkInData.latitude,
       longitude: checkInData.longitude,
-      hasDeviceInfo: !!checkInData.deviceInfo
+      accuracy: checkInData.accuracy,
+      timestamp: checkInData.timestamp,
+      hasDeviceInfo: !!checkInData.deviceInfo,
+      deviceInfo: checkInData.deviceInfo
     });
 
-    const result = await request('/api/employees/attendance/checkin', {
-      method: 'POST',
-      body: JSON.stringify(checkInData)
-    });
+    try {
+      const result = await request('/api/employees/attendance/checkin', {
+        method: 'POST',
+        body: JSON.stringify(checkInData)
+      });
 
-    setAttendanceStatus({
-      isCheckedIn: true,
-      checkInTime: new Date(),
-      checkOutTime: null,
-      locationName: geofence.name,
-      elapsedTime: 0,
-      validationStatus: result.attendance?.validationStatus,
-      dayKey: getLocalDayKey()
-    });
+      console.log('[LocationContext] handleCheckIn: Check-in successful', result);
 
-    if (storageKeys?.attendance) {
-      await AsyncStorage.setItem(
-        storageKeys.attendance,
-        JSON.stringify({
-          ...checkInData,
-          userId,
-          checkInTime: new Date().toISOString(),
-          dayKey: getLocalDayKey()
-        })
-      );
+      setAttendanceStatus({
+        isCheckedIn: true,
+        checkInTime: new Date(),
+        checkOutTime: null,
+        locationName: geofence.name,
+        elapsedTime: 0,
+        validationStatus: result.attendance?.validationStatus,
+        dayKey: getLocalDayKey()
+      });
+
+      if (storageKeys?.attendance) {
+        await AsyncStorage.setItem(
+          storageKeys.attendance,
+          JSON.stringify({
+            ...checkInData,
+            userId,
+            checkInTime: new Date().toISOString(),
+            dayKey: getLocalDayKey()
+          })
+        );
+      }
+
+      await bindDevice(deviceInfo);
+    } catch (error) {
+      // Log full error details including validation errors
+      const errorData = error.data || error.response?.data || {};
+      
+      // Handle "Already checked in" error gracefully by syncing state
+      if (error.message === 'Already checked in' || errorData.error === 'Already checked in') {
+        console.log('[LocationContext] handleCheckIn: Already checked in on backend, syncing state', errorData);
+        
+        // If backend returns attendance data, use it to sync state
+        if (errorData.attendance) {
+          const attendance = errorData.attendance;
+          setAttendanceStatus({
+            isCheckedIn: true,
+            checkInTime: new Date(attendance.clockInTime),
+            checkOutTime: null,
+            locationName: attendance.location?.locationName || geofence.name,
+            elapsedTime: Date.now() - new Date(attendance.clockInTime).getTime(),
+            validationStatus: attendance.validationStatus,
+            dayKey: getLocalDayKey()
+          });
+          
+          // Also sync storage
+          if (storageKeys?.attendance) {
+            await AsyncStorage.setItem(
+              storageKeys.attendance,
+              JSON.stringify({
+                locationId: geofence.id,
+                locationName: geofence.name,
+                latitude: currentLoc.coords.latitude,
+                longitude: currentLoc.coords.longitude,
+                checkInTime: attendance.clockInTime,
+                userId,
+                dayKey: getLocalDayKey()
+              })
+            );
+          }
+          
+          console.log('[LocationContext] handleCheckIn: State synced with backend attendance');
+          return; // Don't throw error, state is now synced
+        }
+        
+        // If no attendance data, try to fetch it
+        try {
+          const currentStatus = await verifyAttendanceStatus();
+          if (currentStatus?.isCheckedIn && currentStatus.currentAttendance) {
+            setAttendanceStatus({
+              isCheckedIn: true,
+              checkInTime: new Date(currentStatus.currentAttendance.checkInTime),
+              checkOutTime: null,
+              locationName: currentStatus.currentAttendance.location?.locationName || geofence.name,
+              elapsedTime: currentStatus.currentAttendance.elapsedTime || 0,
+              validationStatus: currentStatus.currentAttendance.validationStatus,
+              dayKey: getLocalDayKey()
+            });
+            console.log('[LocationContext] handleCheckIn: State synced by fetching current status');
+            return; // Don't throw error, state is now synced
+          }
+        } catch (syncError) {
+          console.error('[LocationContext] handleCheckIn: Failed to sync state', syncError);
+        }
+      }
+      
+      console.error('[LocationContext] handleCheckIn: Check-in failed', {
+        error: error.message,
+        errorStatus: error.status,
+        errorData: errorData,
+        validationErrors: errorData.errors || errorData.error || 'No validation errors in response',
+        checkInData: {
+          locationId: checkInData.locationId,
+          locationName: checkInData.locationName,
+          latitude: checkInData.latitude,
+          longitude: checkInData.longitude,
+          accuracy: checkInData.accuracy,
+          timestamp: checkInData.timestamp,
+          hasDeviceInfo: !!checkInData.deviceInfo,
+          deviceInfo: checkInData.deviceInfo
+        },
+        fullError: error
+      });
+      
+      // Log validation errors separately if they exist
+      if (errorData.errors && Array.isArray(errorData.errors)) {
+        console.error('[LocationContext] handleCheckIn: Validation errors:', errorData.errors);
+        errorData.errors.forEach((err, index) => {
+          console.error(`  [${index}] ${err.field || 'unknown'}: ${err.message || 'unknown error'}`);
+        });
+      }
+      
+      throw error; // Re-throw so caller can handle it
     }
-
-    await bindDevice(deviceInfo);
 
     await notifyGeofenceEvent({
       key: `arrived:${geofence.id}`,
@@ -779,16 +899,31 @@ export const LocationProvider = ({ children }) => {
   };
 
   const verifyAttendanceStatus = async () => {
-    if (!token) return;
+    if (!token) return null;
     try {
       const data = await request('/api/employees/attendance/current');
-      if (!data?.success) return;
+      if (!data?.success) return null;
 
-      if (!data.isCheckedIn && attendanceStatus.isCheckedIn) {
+      if (data.isCheckedIn && data.currentAttendance) {
+        // Update state if checked in
+        setAttendanceStatus({
+          isCheckedIn: true,
+          checkInTime: new Date(data.currentAttendance.checkInTime),
+          checkOutTime: null,
+          locationName: data.currentAttendance.location?.locationName || attendanceStatus.locationName,
+          elapsedTime: data.currentAttendance.elapsedTime || 0,
+          validationStatus: data.currentAttendance.validationStatus,
+          dayKey: getLocalDayKey()
+        });
+      } else if (!data.isCheckedIn && attendanceStatus.isCheckedIn) {
+        // Clear state if not checked in but frontend thinks we are
         await clearAttendanceState();
       }
+      
+      return data; // Return the data for caller to use
     } catch (error) {
       console.error('Error verifying attendance status:', error);
+      return null;
     }
   };
 

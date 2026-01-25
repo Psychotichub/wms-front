@@ -123,7 +123,31 @@ export const createApiClient = ({
 
         switch (response.status) {
           case 400:
-            errorMessage = data.message || 'Invalid request. Please check your input.';
+            // Include validation errors if available
+            if (isDev) {
+              console.error('❌ 400 Bad Request - Full response:', {
+                status: response.status,
+                data: data,
+                hasErrors: !!(data.errors && Array.isArray(data.errors)),
+                errorCount: data.errors?.length || 0,
+                message: data.message,
+                error: data.error
+              });
+            }
+            if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+              const validationErrors = data.errors.map(e => `${e.field}: ${e.message}`).join(', ');
+              errorMessage = `${data.message || 'Validation failed'}: ${validationErrors}`;
+              if (isDev) {
+                console.error('❌ Validation errors:', data.errors);
+                data.errors.forEach((err, idx) => {
+                  console.error(`  [${idx}] Field: ${err.field}, Message: ${err.message}`);
+                });
+              }
+            } else if (data.error) {
+              errorMessage = data.error;
+            } else {
+              errorMessage = data.message || 'Invalid request. Please check your input.';
+            }
             break;
           case 401: {
             // Preserve backend message (e.g. "Invalid credentials") when present
@@ -193,6 +217,7 @@ export const createApiClient = ({
         const error = new Error(errorMessage);
         error.status = response.status;
         error.data = data;
+        error.response = { status: response.status, data };
         throw error;
       }
 
