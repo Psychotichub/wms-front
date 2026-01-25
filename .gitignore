@@ -70,7 +70,8 @@ coverage/
 **/android/app/debug/
 **/android/app/src/main/assets/index.android.bundle
 **/android/app/src/main/res/drawable-*/
-**/android/app/src/main/res/mipmap-*/
+# Note: Keep mipmap resources - they contain the app launcher icon needed for builds
+# **/android/app/src/main/res/mipmap-*/
 **/android/app/src/main/res/values/strings.xml.bak
 
 # Gradle cache (but keep wrapper and scripts)

@@ -12,6 +12,7 @@ module.exports = {
     slug: 'working-management-system',
     owner: 'e-wms',
     version: '1.0.0',
+    icon: './assets/logo.png',
     platforms: ['ios', 'android', 'web'],
     web: {
       favicon: './assets/logo.png',
@@ -76,6 +77,8 @@ module.exports = {
       ]
     },
     // Note: native config is managed directly in the android/ios folders.
+    // When native folders exist, EAS Build won't sync plugins/ios/android from this file.
+    // This is expected behavior - we manage native code manually for custom configurations.
   }
 };
 
