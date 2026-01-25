@@ -68,6 +68,7 @@ module.exports = {
       }
     },
     android: {
+      package: 'com.psychotic.wms',
       permissions: [
         'ACCESS_FINE_LOCATION',
         'ACCESS_COARSE_LOCATION',

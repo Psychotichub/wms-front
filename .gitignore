@@ -49,6 +49,7 @@ coverage/
 
 # Android Build Artifacts (keep source, ignore builds)
 # Build directories
+/android
 **/android/app/build/
 **/android/app/.cxx/
 **/android/build/
