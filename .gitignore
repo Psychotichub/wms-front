@@ -1,0 +1,216 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment variables (all .env files anywhere)
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+**/.env
+**/.env.*
+!.env.example
+!**/env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+logs/
+*.log.*
+
+# Expo
+.expo/
+**/.expo/
+.expo-shared/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Build outputs
+build/
+**/build/
+dist/
+**/dist/
+coverage/
+*.tsbuildinfo
+*.map
+*.js.map
+
+# Android Build Artifacts (keep source, ignore builds)
+# Build directories
+**/android/app/build/
+**/android/app/.cxx/
+**/android/build/
+**/android/.gradle/
+**/android/.idea/
+
+# Keystores (sensitive - never commit)
+**/android/app/debug.keystore
+**/android/app/release.keystore
+**/android/app/*.keystore
+*.jks
+*.keystore
+
+# Local configuration
+**/android/local.properties
+
+# Generated files
+**/android/app/release/
+**/android/app/debug/
+**/android/app/src/main/assets/index.android.bundle
+**/android/app/src/main/res/drawable-*/
+**/android/app/src/main/res/mipmap-*/
+**/android/app/src/main/res/values/strings.xml.bak
+
+# Gradle cache (but keep wrapper and scripts)
+**/android/.gradle/
+**/android/captures/
+**/android/.externalNativeBuild/
+**/android/.cxx/
+!**/android/gradlew
+!**/android/gradlew.bat
+!**/android/gradle/wrapper/gradle-wrapper.jar
+!**/android/gradle/wrapper/gradle-wrapper.properties
+
+# Build outputs
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# iOS Build Artifacts
+ios/
+**/ios/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+*.xcuserstate
+*.xcworkspace
+!*.xcworkspace/contents.xcworkspacedata
+project.xcworkspace/
+*.xcuserdatad
+*.xcscmblueprint
+*.xcscheme
+!default.xcscheme
+Pods/
+*.framework
+*.dSYM.zip
+*.dSYM
+
+# Gradle
+.gradle/
+**/.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+.gradletasknamecache
+
+# EAS (Expo Application Services)
+.eas/
+eas-build-pre-install.sh
+eas.json.local
+
+# Metro bundler
+.metro-health-check*
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+.jest/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+*.bak
+*.backup
+*.orig
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+*.iml
+.project
+.classpath
+.settings/
+*.sublime-*
+
+# TypeScript
+*.tsbuildinfo
+
+# Optional: Package manager locks (keep them for consistency)
+# Uncomment if you want to ignore lock files
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Secrets and keys
+*.pem
+*.key
+*.crt
+*.cert
+secrets/
+.secrets/
+
+# Cache directories
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+*.cache
+
+# Misc
+*.pid
+*.seed
+*.pid.lock
+.npm
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
