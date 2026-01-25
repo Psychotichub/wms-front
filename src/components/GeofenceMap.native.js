@@ -1,5 +1,29 @@
 import React, { forwardRef } from 'react';
-import MapView, { Polygon, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Polygon, Marker, Circle as RNMCircle, PROVIDER_GOOGLE } from 'react-native-maps';
+
+// Wrapper component to ensure Circle is always available and matches the API
+const Circle = forwardRef(({ center, coordinate, radius, fillColor, strokeColor, strokeWidth, ...props }, ref) => {
+  // Convert center prop to coordinate format if needed
+  const circleCoordinate = center || coordinate;
+  
+  if (!circleCoordinate || !radius || radius <= 0) {
+    return null;
+  }
+
+  return (
+    <RNMCircle
+      ref={ref}
+      center={circleCoordinate}
+      radius={radius}
+      fillColor={fillColor}
+      strokeColor={strokeColor}
+      strokeWidth={strokeWidth}
+      {...props}
+    />
+  );
+});
+
+Circle.displayName = 'Circle';
 
 const GeofenceMap = forwardRef(
   (
@@ -19,17 +43,20 @@ const GeofenceMap = forwardRef(
     Number.isFinite(location.coords.latitude) &&
     Number.isFinite(location.coords.longitude);
 
+  // Extract showsMyLocationButton from rest to ensure we control it
+  const { showsMyLocationButton: _, ...restWithoutLocationButton } = rest;
+  
   return (
     <MapView
       ref={ref}
       style={style}
       region={region}
       showsUserLocation={hasLocation}
-      showsMyLocationButton={false}
+      showsMyLocationButton={true}
       provider={PROVIDER_GOOGLE}
       scrollEnabled={rest.scrollEnabled !== undefined ? rest.scrollEnabled : true}
       zoomEnabled={rest.zoomEnabled !== undefined ? rest.zoomEnabled : true}
-      {...rest}
+      {...restWithoutLocationButton}
     >
       {children}
 
@@ -82,5 +109,5 @@ const GeofenceMap = forwardRef(
 GeofenceMap.displayName = 'GeofenceMap';
 
 export default GeofenceMap;
-export { Polygon, Marker, PROVIDER_GOOGLE };
+export { Polygon, Marker, Circle, PROVIDER_GOOGLE };
 

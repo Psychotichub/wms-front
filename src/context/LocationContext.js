@@ -162,14 +162,51 @@ export const LocationProvider = ({ children }) => {
     }
   };
 
+  // Check if geolocation is supported and in secure context (web only)
+  const isGeolocationSupported = useCallback(() => {
+    if (Platform.OS !== 'web') {
+      return true; // Native platforms always support geolocation
+    }
+    
+    // Check if geolocation API is available
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      console.error('[LocationContext] Geolocation API not supported in this browser');
+      return false;
+    }
+    
+    // Check for secure context (HTTPS or localhost)
+    const isSecureContext = 
+      window.isSecureContext || 
+      window.location.protocol === 'https:' || 
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.endsWith('.localhost');
+    
+    if (!isSecureContext) {
+      console.error('[LocationContext] Geolocation requires secure context (HTTPS or localhost)');
+      return false;
+    }
+    
+    return true;
+  }, []);
+
   const requestPermissions = useCallback(async () => {
     try {
+      // Check secure context on web
+      if (Platform.OS === 'web' && !isGeolocationSupported()) {
+        setLocationPermission(false);
+        return false;
+      }
+
       const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
       
       // On web, only request foreground permissions
       if (Platform.OS === 'web') {
         const granted = foregroundStatus === 'granted';
         setLocationPermission(granted);
+        if (!granted) {
+          console.warn('[LocationContext] Location permission denied by user');
+        }
         return granted;
       }
       
@@ -177,12 +214,19 @@ export const LocationProvider = ({ children }) => {
       const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
       const granted = foregroundStatus === 'granted' && backgroundStatus === 'granted';
       setLocationPermission(granted);
+      if (!granted) {
+        console.warn('[LocationContext] Location permissions not fully granted:', {
+          foreground: foregroundStatus,
+          background: backgroundStatus
+        });
+      }
       return granted;
     } catch (error) {
-      console.error('Error requesting location permissions:', error);
+      console.error('[LocationContext] Error requesting location permissions:', error);
+      setLocationPermission(false);
       return false;
     }
-  }, []);
+  }, [isGeolocationSupported]);
 
   // Stop background location tracking (native only)
   const stopBackgroundLocationTracking = useCallback(async () => {
@@ -342,6 +386,74 @@ export const LocationProvider = ({ children }) => {
     }
   }, [requestPermissions]);
 
+  // Get current location explicitly (one-time request)
+  const getCurrentLocation = useCallback(async (options = {}) => {
+    const {
+      timeout = 15000, // 15 seconds default timeout
+      maximumAge = 60000, // Accept cached location up to 1 minute old
+      enableHighAccuracy = true
+    } = options;
+
+    try {
+      // Check secure context on web
+      if (Platform.OS === 'web' && !isGeolocationSupported()) {
+        throw new Error('Geolocation not supported or not in secure context (HTTPS/localhost required)');
+      }
+
+      // Request permissions if not already granted
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) {
+        throw new Error('Location permission denied');
+      }
+
+      console.log('[LocationContext] Requesting current location...');
+      
+      // Use getCurrentPositionAsync for one-time location fetch
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: enableHighAccuracy ? Location.Accuracy.High : Location.Accuracy.Balanced,
+        maximumAge,
+        timeout
+      });
+
+      if (!location || !location.coords) {
+        throw new Error('Invalid location data received');
+      }
+
+      console.log('[LocationContext] Current location obtained:', {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        accuracy: location.coords.accuracy
+      });
+
+      // Update location state
+      setLocation(location);
+      
+      return location;
+    } catch (error) {
+      // Handle specific error types
+      if (error.code === 'PERMISSION_DENIED' || error.message?.includes('permission')) {
+        console.error('[LocationContext] Location permission denied');
+        setLocationPermission(false);
+        throw new Error('Location permission denied. Please enable location access in your browser/device settings.');
+      } else if (error.code === 'POSITION_UNAVAILABLE' || error.message?.includes('unavailable')) {
+        console.error('[LocationContext] Location unavailable');
+        throw new Error('Location unavailable. Please check your GPS/network connection.');
+      } else if (error.code === 'TIMEOUT' || error.message?.includes('timeout')) {
+        console.error('[LocationContext] Location request timeout');
+        throw new Error('Location request timed out. Please try again.');
+      } else if (error.message?.includes('secure context')) {
+        console.error('[LocationContext] Not in secure context');
+        throw new Error('Geolocation requires HTTPS or localhost. Please use a secure connection.');
+      } else if (error.message?.includes('not supported')) {
+        console.error('[LocationContext] Geolocation not supported');
+        throw new Error('Geolocation is not supported in this browser.');
+      } else {
+        console.error('[LocationContext] Error getting current location:', error);
+        throw new Error(error.message || 'Failed to get current location');
+      }
+    }
+  }, [isGeolocationSupported, requestPermissions]);
+
   const startLocationTracking = async () => {
     const hasPermission = await requestPermissions();
     if (!hasPermission) {
@@ -369,7 +481,7 @@ export const LocationProvider = ({ children }) => {
 
     locationSubscriptionRef.current = sub;
     setIsTracking(true);
-    console.log(`Foreground location tracking started on ${Platform.OS}`);
+    console.log(`[LocationContext] Foreground location tracking started on ${Platform.OS}`);
   };
 
   const getDeviceInfo = () => ({
@@ -799,6 +911,7 @@ export const LocationProvider = ({ children }) => {
     attendanceStatus,
     workingHours,
     requestPermissions,
+    getCurrentLocation,
     startLocationTracking,
     stopLocationTracking,
     loadGeofences,

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { StyleSheet, View, Text, Platform, ActivityIndicator, Pressable } from 'react-native';
+import { StyleSheet, View, Text, Platform, ActivityIndicator, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import GeofenceMap, { Marker, Polygon } from '../GeofenceMap';
+import GeofenceMap, { Marker, Polygon, Circle } from '../GeofenceMap';
 import { useAuth } from '../../context/AuthContext';
+import { useLocation } from '../../context/LocationContext';
 import { useThemeTokens } from '../../theme/ThemeProvider';
 import EmptyState from './EmptyState';
 
@@ -10,6 +11,7 @@ const UPDATE_INTERVAL = 30000; // 30 seconds
 
 const RealTimeMapWidget = ({ style }) => {
   const { request } = useAuth();
+  const { location: userLocation, getCurrentLocation } = useLocation();
   const t = useThemeTokens();
   const mapRef = useRef(null);
   const [activeLocations, setActiveLocations] = useState([]);
@@ -50,9 +52,11 @@ const RealTimeMapWidget = ({ style }) => {
     return () => clearInterval(interval);
   }, [fetchMapData]);
 
-  // Calculate map region to fit all markers
+  // Calculate map region to fit all markers including user location
   const calculatedRegion = useMemo(() => {
     const allPoints = [
+      // Include user location if available
+      ...(userLocation?.coords ? [{ lat: userLocation.coords.latitude, lon: userLocation.coords.longitude }] : []),
       ...activeLocations.map(loc => ({ lat: loc.latitude, lon: loc.longitude })),
       ...geofences.flatMap(gf => {
         if (gf.type === 'circle' && gf.center) {
@@ -101,7 +105,7 @@ const RealTimeMapWidget = ({ style }) => {
       latitudeDelta: latDelta,
       longitudeDelta: lonDelta
     };
-  }, [activeLocations, geofences]);
+  }, [activeLocations, geofences, userLocation]);
 
   // Update map region when calculated region changes
   useEffect(() => {
@@ -125,6 +129,60 @@ const RealTimeMapWidget = ({ style }) => {
       longitudeDelta: mapRegion.longitudeDelta * factor,
     });
   }, [mapRegion, animateToRegion]);
+
+  const goToCurrentLocation = useCallback(async () => {
+    console.log('[RealTimeMapWidget] GPS/Locate button clicked');
+    
+    try {
+      let locationToUse = userLocation;
+      
+      // If location is not available, try to get it
+      if (!locationToUse?.coords) {
+        console.log('[RealTimeMapWidget] Location not in state, requesting current location...');
+        try {
+          locationToUse = await getCurrentLocation();
+        } catch (error) {
+          console.error('[RealTimeMapWidget] Failed to get current location:', error);
+          Alert.alert(
+            'Location Unavailable',
+            error.message || 'Unable to get your current location. Please check your location settings and try again.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+      }
+      
+      if (!locationToUse?.coords) {
+        console.warn('[RealTimeMapWidget] Location still not available after request');
+        Alert.alert(
+          'Location Unavailable',
+          'Unable to get your current location. Please ensure location services are enabled.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
+      console.log('[RealTimeMapWidget] Navigating to user location:', {
+        latitude: locationToUse.coords.latitude,
+        longitude: locationToUse.coords.longitude,
+        accuracy: locationToUse.coords.accuracy
+      });
+      
+      animateToRegion({
+        latitude: locationToUse.coords.latitude,
+        longitude: locationToUse.coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+    } catch (error) {
+      console.error('[RealTimeMapWidget] Error in goToCurrentLocation:', error);
+      Alert.alert(
+        'Error',
+        error.message || 'An error occurred while getting your location.',
+        [{ text: 'OK' }]
+      );
+    }
+  }, [userLocation, getCurrentLocation, animateToRegion]);
 
   const formatElapsedTime = (ms) => {
     const hours = Math.floor(ms / (1000 * 60 * 60));
@@ -191,28 +249,51 @@ const RealTimeMapWidget = ({ style }) => {
             <GeofenceMap
               ref={mapRef}
               region={mapRegion || calculatedRegion}
+              location={userLocation}
               style={styles.map}
               scrollEnabled={true}
               zoomEnabled={true}
               onRegionChangeComplete={(region) => setMapRegion(region)}
             >
+            {/* Render user location */}
+            {userLocation?.coords && (
+              <Marker
+                coordinate={{
+                  latitude: userLocation.coords.latitude,
+                  longitude: userLocation.coords.longitude
+                }}
+                title="Your Location"
+                description={`Accuracy: ${Math.round(userLocation.coords.accuracy || 0)}m`}
+                pinColor="#ef4444"
+              />
+            )}
+
             {/* Render geofences */}
             {geofences.map((geofence) => {
-              if (geofence.type === 'circle' && geofence.center) {
-                // For circles, we'll show a marker at the center
-                // Note: react-native-maps doesn't support circle overlays directly in the same way
-                // You might want to use a custom overlay or just show the center marker
+              if (geofence.type === 'circle' && geofence.center && geofence.radius) {
+                // Render circle geofence with Circle component
                 return (
-                  <Marker
-                    key={geofence.id}
-                    coordinate={{
-                      latitude: geofence.center[1],
-                      longitude: geofence.center[0]
-                    }}
-                    title={geofence.name}
-                    description={`Site (${geofence.radius || 'N/A'}m radius)`}
-                    pinColor="#3b82f6"
-                  />
+                  <React.Fragment key={geofence.id}>
+                    <Circle
+                      center={{
+                        latitude: geofence.center[1],
+                        longitude: geofence.center[0]
+                      }}
+                      radius={geofence.radius}
+                      fillColor="rgba(59, 130, 246, 0.2)"
+                      strokeColor="#3b82f6"
+                      strokeWidth={2}
+                    />
+                    <Marker
+                      coordinate={{
+                        latitude: geofence.center[1],
+                        longitude: geofence.center[0]
+                      }}
+                      title={geofence.name}
+                      description={`Site (${geofence.radius}m radius)`}
+                      pinColor="#3b82f6"
+                    />
+                  </React.Fragment>
                 );
               }
               if (geofence.coordinates && geofence.coordinates.length > 0) {
@@ -267,14 +348,21 @@ const RealTimeMapWidget = ({ style }) => {
                 onPress={() => zoom(0.7)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="add" size={18} color={t.colors.text} />
+                <Ionicons name="add-circle" size={20} color={t.colors.text} />
               </Pressable>
               <Pressable 
                 style={styles.zoomButton} 
                 onPress={() => zoom(1.3)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="remove" size={18} color={t.colors.text} />
+                <Ionicons name="remove-circle" size={20} color={t.colors.text} />
+              </Pressable>
+              <Pressable 
+                style={styles.zoomButton} 
+                onPress={goToCurrentLocation}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="locate-outline" size={20} color={t.colors.text} />
               </Pressable>
             </View>
           </>
@@ -288,6 +376,12 @@ const RealTimeMapWidget = ({ style }) => {
       </View>
 
       <View style={styles.legend}>
+        {userLocation?.coords && (
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
+            <Text style={[styles.legendText, { color: t.colors.textSecondary }]}>Your Location</Text>
+          </View>
+        )}
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#3b82f6' }]} />
           <Text style={[styles.legendText, { color: t.colors.textSecondary }]}>Active Sites</Text>
@@ -371,6 +465,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 4,
     gap: 4,
+    flexDirection: 'row',
     ...Platform.select({
       ios: {
         shadowColor: '#000',

@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useThemeTokens } from '../theme/ThemeProvider';
 import { useLocation } from '../context/LocationContext';
 import Screen from '../components/Screen';
-import GeofenceMap, { Marker, Polygon } from '../components/GeofenceMap';
+import GeofenceMap, { Marker, Polygon, Circle } from '../components/GeofenceMap';
 import SiteRequiredNotice from '../components/SiteRequiredNotice';
 import { getGoogleMapsApiKey } from '../config/runtime';
 
@@ -53,7 +53,7 @@ const parseCoordinates = (text) => {
 const ManageLocationsScreen = () => {
   const navigation = useNavigation();
   const { token, request, user } = useAuth();
-  const { loadGeofences, location: currentLocation } = useLocation();
+  const { loadGeofences, location: currentLocation, getCurrentLocation } = useLocation();
   const t = useThemeTokens();
   const mapRef = useRef(null);
   // Get Google Maps API key - fails fast if missing (required for maps)
@@ -76,6 +76,51 @@ const ManageLocationsScreen = () => {
   const [loadingLocations, setLoadingLocations] = useState(false);
   const isLoadingRef = useRef(false);
   const [editingId, setEditingId] = useState(null);
+  
+  // Google Places Autocomplete service (web only)
+  const autocompleteServiceRef = useRef(null);
+  const placesServiceRef = useRef(null);
+  
+  // Initialize Google Places services when Maps API is loaded (web only)
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    
+    const initializeServices = () => {
+      if (window.google?.maps?.places) {
+        if (!autocompleteServiceRef.current) {
+          autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService();
+        }
+        if (!placesServiceRef.current) {
+          // PlacesService needs a map or div element, we'll create a dummy one
+          const dummyDiv = document.createElement('div');
+          placesServiceRef.current = new window.google.maps.places.PlacesService(dummyDiv);
+        }
+      }
+    };
+    
+    // Try to initialize immediately
+    initializeServices();
+    
+    // If not ready, wait for the API to load
+    if (!window.google?.maps?.places) {
+      const checkInterval = setInterval(() => {
+        if (window.google?.maps?.places) {
+          initializeServices();
+          clearInterval(checkInterval);
+        }
+      }, 100);
+      
+      // Cleanup after 10 seconds
+      const timeout = setTimeout(() => {
+        clearInterval(checkInterval);
+      }, 10000);
+      
+      return () => {
+        clearInterval(checkInterval);
+        clearTimeout(timeout);
+      };
+    }
+  }, []);
 
   const isPolygon = type === 'polygon';
   const parsedCoords = useMemo(() => parseCoordinates(coordinatesText), [coordinatesText]);
@@ -193,14 +238,58 @@ const ManageLocationsScreen = () => {
     });
   };
 
-  const goToCurrentLocation = () => {
-    if (!currentLocation?.coords) return;
-    animateToRegion({
-      latitude: currentLocation.coords.latitude,
-      longitude: currentLocation.coords.longitude,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    });
+  const goToCurrentLocation = async () => {
+    console.log('[ManageLocationsScreen] GPS/Locate button clicked');
+    
+    try {
+      let locationToUse = currentLocation;
+      
+      // If location is not available, try to get it
+      if (!locationToUse?.coords) {
+        console.log('[ManageLocationsScreen] Location not in state, requesting current location...');
+        try {
+          locationToUse = await getCurrentLocation();
+        } catch (error) {
+          console.error('[ManageLocationsScreen] Failed to get current location:', error);
+          Alert.alert(
+            'Location Unavailable',
+            error.message || 'Unable to get your current location. Please check your location settings and try again.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+      }
+      
+      if (!locationToUse?.coords) {
+        console.warn('[ManageLocationsScreen] Location still not available after request');
+        Alert.alert(
+          'Location Unavailable',
+          'Unable to get your current location. Please ensure location services are enabled.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
+      console.log('[ManageLocationsScreen] Navigating to current location:', {
+        latitude: locationToUse.coords.latitude,
+        longitude: locationToUse.coords.longitude,
+        accuracy: locationToUse.coords.accuracy
+      });
+      
+      animateToRegion({
+        latitude: locationToUse.coords.latitude,
+        longitude: locationToUse.coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+    } catch (error) {
+      console.error('[ManageLocationsScreen] Error in goToCurrentLocation:', error);
+      Alert.alert(
+        'Error',
+        error.message || 'An error occurred while getting your location.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const fetchPlaces = async (query) => {
@@ -208,6 +297,51 @@ const ManageLocationsScreen = () => {
       setSearchResults([]);
       return;
     }
+    
+    // On web, use Google Maps JS API Places Autocomplete service
+    if (Platform.OS === 'web') {
+      if (!window.google?.maps?.places) {
+        console.warn('Google Maps Places API not loaded yet');
+        setSearchResults([]);
+        return;
+      }
+      
+      if (!autocompleteServiceRef.current) {
+        autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService();
+      }
+      
+      try {
+        autocompleteServiceRef.current.getPlacePredictions(
+          { input: query },
+          (predictions, status) => {
+            if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+              // Map predictions to match the expected format
+              const results = predictions.map(pred => ({
+                place_id: pred.place_id,
+                description: pred.description,
+                structured_formatting: pred.structured_formatting,
+              }));
+              setSearchResults(results);
+            } else if (status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+              setSearchResults([]);
+            } else {
+              console.error('Places Autocomplete error:', status);
+              if (status === window.google.maps.places.PlacesServiceStatus.REQUEST_DENIED) {
+                Alert.alert('API Error', 'Places API request denied. Please check:\n1. Places API is enabled in Google Cloud Console\n2. API key has Places API permission\n3. API key restrictions allow this domain');
+              }
+              setSearchResults([]);
+            }
+          }
+        );
+      } catch (error) {
+        console.error('Error fetching places:', error);
+        Alert.alert('Network Error', 'Failed to search places. Please check your internet connection.');
+        setSearchResults([]);
+      }
+      return;
+    }
+    
+    // On native, fall back to REST API (if needed in the future)
     if (!googleKey) {
       console.error('Google Maps API key is missing');
       Alert.alert('Configuration Error', 'Google Maps API key is not configured. Please check your environment variables.');
@@ -245,13 +379,89 @@ const ManageLocationsScreen = () => {
       console.error('Invalid place selected');
       return;
     }
+    
+    setSearchQuery(place.description);
+    setSearchResults([]);
+    
+    // On web, use Google Maps JS API Places Service
+    if (Platform.OS === 'web') {
+      if (!window.google?.maps?.places) {
+        Alert.alert('Error', 'Google Maps Places API not loaded yet. Please try again.');
+        return;
+      }
+      
+      if (!placesServiceRef.current) {
+        const dummyDiv = document.createElement('div');
+        placesServiceRef.current = new window.google.maps.places.PlacesService(dummyDiv);
+      }
+      
+      try {
+        placesServiceRef.current.getDetails(
+          { placeId: place.place_id },
+          (result, status) => {
+            if (status === window.google.maps.places.PlacesServiceStatus.OK && result) {
+              const loc = result.geometry?.location;
+              const placeName = result.name || place.description;
+              
+              if (placeName && !name) {
+                setName(placeName);
+              }
+              
+              if (loc) {
+                const lat = typeof loc.lat === 'function' ? loc.lat() : loc.lat;
+                const lng = typeof loc.lng === 'function' ? loc.lng() : loc.lng;
+                
+                if (lat && lng) {
+                  setSearchMarker({
+                    latitude: lat,
+                    longitude: lng,
+                    title: placeName || 'Selected place',
+                  });
+                  if (isPolygon) {
+                    const point = `${lng.toFixed(6)},${lat.toFixed(6)}`;
+                    setCoordinatesText((prev) => (prev ? `${prev.trim()}\n${point}` : point));
+                  } else {
+                    setCenterLon(lng.toFixed(6));
+                    setCenterLat(lat.toFixed(6));
+                    if (!radius) setRadius('50');
+                  }
+                  animateToRegion({
+                    latitude: lat,
+                    longitude: lng,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  });
+                } else {
+                  console.error('No location found for place:', place);
+                  Alert.alert('Error', 'Could not get location for selected place.');
+                }
+              } else {
+                console.error('No location found for place:', place);
+                Alert.alert('Error', 'Could not get location for selected place.');
+              }
+            } else {
+              console.error('Places Details API error:', status);
+              if (status === window.google.maps.places.PlacesServiceStatus.REQUEST_DENIED) {
+                Alert.alert('API Error', 'Places API request denied. Please check API key configuration.');
+              } else {
+                Alert.alert('Error', `Failed to get place details: ${status}`);
+              }
+            }
+          }
+        );
+      } catch (error) {
+        console.error('Error fetching place details:', error);
+        Alert.alert('Network Error', 'Failed to get place details. Please check your internet connection.');
+      }
+      return;
+    }
+    
+    // On native, fall back to REST API (if needed in the future)
     if (!googleKey) {
       Alert.alert('Configuration Error', 'Google Maps API key is not configured.');
       return;
     }
     
-    setSearchQuery(place.description);
-    setSearchResults([]);
     try {
       const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&key=${googleKey}`;
       const resp = await fetch(url);
@@ -752,8 +962,9 @@ const ManageLocationsScreen = () => {
                     latitude: currentLocation.coords.latitude, 
                     longitude: currentLocation.coords.longitude 
                   }}
-                  title="Your Current Location"
-                  pinColor="#22c55e"
+                  title="Your Location"
+                  description={`Accuracy: ${Math.round(currentLocation.coords.accuracy || 0)}m`}
+                  pinColor="#ef4444"
                 />
               )}
               {searchMarker && (
@@ -780,12 +991,26 @@ const ManageLocationsScreen = () => {
                 />
               )}
               {!isPolygon && Number.isFinite(parseFloat(centerLat)) && Number.isFinite(parseFloat(centerLon)) && (
-                <Marker
-                  coordinate={{ latitude: parseFloat(centerLat), longitude: parseFloat(centerLon) }}
-                  title="Center"
-                  description={radius ? `Radius ${radius}m` : undefined}
-                  pinColor="#3b82f6"
-                />
+                <>
+                  {Number.isFinite(parseFloat(radius)) && parseFloat(radius) > 0 && (
+                    <Circle
+                      center={{
+                        latitude: parseFloat(centerLat),
+                        longitude: parseFloat(centerLon)
+                      }}
+                      radius={parseFloat(radius)}
+                      fillColor="rgba(59, 130, 246, 0.2)"
+                      strokeColor="#3b82f6"
+                      strokeWidth={2}
+                    />
+                  )}
+                  <Marker
+                    coordinate={{ latitude: parseFloat(centerLat), longitude: parseFloat(centerLon) }}
+                    title="Center"
+                    description={radius ? `Radius ${radius}m` : undefined}
+                    pinColor="#3b82f6"
+                  />
+                </>
               )}
             </GeofenceMap>
             <View style={[styles.searchContainer, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}>
@@ -1016,6 +1241,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 6,
     gap: 8,
+    flexDirection: 'row',
     zIndex: 2,
   },
   iconBtn: {

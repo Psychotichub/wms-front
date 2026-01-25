@@ -1,6 +1,6 @@
 import React, { forwardRef, useMemo, useImperativeHandle, useRef, useState, useEffect } from 'react';
 import { View, Text } from 'react-native';
-import { APIProvider, Map, AdvancedMarker, Marker as RegularMarker, Polygon as GooglePolygon, useMap } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, AdvancedMarker, Marker as RegularMarker, Polygon as GooglePolygon, InfoWindow, useMap } from '@vis.gl/react-google-maps';
 import { getGoogleMapsApiKey, getGoogleMapsMapId } from '../config/runtime';
 
 const PROVIDER_GOOGLE = 'google';
@@ -10,6 +10,7 @@ const getZoomFromDelta = (latDelta) => {
   const zoom = Math.log2(360 / latDelta);
   return Math.min(20, Math.max(1, Math.round(zoom)));
 };
+
 
 // Wrapper components to match react-native-maps API for compatibility
 // These must be defined before GeofenceMap to ensure proper exports
@@ -64,6 +65,84 @@ const Polygon = forwardRef(({ coordinates, paths, fillColor, strokeColor, stroke
 
 Polygon.displayName = 'Polygon';
 
+// Circle component using Google Maps JS API imperatively
+const Circle = forwardRef(({ center, coordinate, radius, fillColor, strokeColor, strokeWidth, ...props }, ref) => {
+  const map = useMap();
+  const circleRef = useRef(null);
+  
+  // Convert coordinate (native format) to center (web format)
+  // Handle both native format {latitude, longitude} and web format {lat, lng}
+  const circleCenter = useMemo(() => {
+    if (center) {
+      // Check if it's in native format (has latitude/longitude) or web format (has lat/lng)
+      if ('latitude' in center && 'longitude' in center) {
+        return { lat: center.latitude, lng: center.longitude };
+      }
+      if ('lat' in center && 'lng' in center) {
+        return center;
+      }
+    }
+    if (coordinate) {
+      return { lat: coordinate.latitude, lng: coordinate.longitude };
+    }
+    return null;
+  }, [center, coordinate]);
+  
+  // Expose circle instance via ref if needed
+  useImperativeHandle(ref, () => circleRef.current, []);
+  
+  // Create and update circle imperatively
+  useEffect(() => {
+    if (!map || !circleCenter || !radius || radius <= 0) {
+      // Clean up if data becomes invalid
+      if (circleRef.current) {
+        circleRef.current.setMap(null);
+        circleRef.current = null;
+      }
+      return;
+    }
+    
+    // Create circle if it doesn't exist
+    if (!circleRef.current) {
+      const googleCircle = new window.google.maps.Circle({
+        center: circleCenter,
+        radius: radius,
+        fillColor: fillColor || 'rgba(59, 130, 246, 0.2)',
+        fillOpacity: 0.2,
+        strokeColor: strokeColor || '#3b82f6',
+        strokeWeight: strokeWidth || 2,
+        strokeOpacity: 1,
+        map: map,
+        ...(props.options || {})
+      });
+      circleRef.current = googleCircle;
+    } else {
+      // Update existing circle
+      circleRef.current.setCenter(circleCenter);
+      circleRef.current.setRadius(radius);
+      circleRef.current.setOptions({
+        fillColor: fillColor || 'rgba(59, 130, 246, 0.2)',
+        strokeColor: strokeColor || '#3b82f6',
+        strokeWeight: strokeWidth || 2,
+        ...(props.options || {})
+      });
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (circleRef.current) {
+        circleRef.current.setMap(null);
+        circleRef.current = null;
+      }
+    };
+  }, [map, circleCenter, radius, fillColor, strokeColor, strokeWidth, props.options]);
+  
+  // Return null since we're rendering imperatively
+  return null;
+});
+
+Circle.displayName = 'Circle';
+
 // Internal component to access map instance
 const MapController = ({ mapRef, onRegionChangeComplete }) => {
   const map = useMap();
@@ -103,6 +182,116 @@ const MapController = ({ mapRef, onRegionChangeComplete }) => {
     };
   }, [map, onRegionChangeComplete]);
 
+  // Hide Google Maps default location button (we want only one location button)
+  useEffect(() => {
+    if (!map) return;
+    
+    // Add global CSS to hide location buttons
+    const styleId = 'hide-google-maps-location-button';
+    let styleElement = document.getElementById(styleId);
+    if (!styleElement) {
+      styleElement = document.createElement('style');
+      styleElement.id = styleId;
+      styleElement.textContent = `
+        /* Hide Google Maps location button */
+        button[title*="My location" i],
+        button[title*="Your location" i],
+        button[title*="Show your location" i],
+        button[aria-label*="My location" i],
+        button[aria-label*="Your location" i],
+        button[aria-label*="Show your location" i],
+        .gm-style button[jsaction*="location"],
+        .gm-style-cc button[jsaction*="location"] {
+          display: none !important;
+          visibility: hidden !important;
+        }
+      `;
+      document.head.appendChild(styleElement);
+    }
+    
+    const hideLocationButton = () => {
+      // Find and hide all location-related buttons
+      const allButtons = document.querySelectorAll('button');
+      let hiddenCount = 0;
+      
+      allButtons.forEach((button) => {
+        const title = (button.getAttribute('title') || button.getAttribute('aria-label') || '').toLowerCase();
+        const jsaction = (button.getAttribute('jsaction') || '').toLowerCase();
+        const className = (button.className || '').toLowerCase();
+        
+        // Check if this is a location button
+        if (
+          title.includes('location') ||
+          title.includes('my location') ||
+          title.includes('your location') ||
+          jsaction.includes('location') ||
+          className.includes('location')
+        ) {
+          console.log('[GeofenceMap] Hiding location button:', {
+            title: button.getAttribute('title'),
+            ariaLabel: button.getAttribute('aria-label'),
+            jsaction: button.getAttribute('jsaction'),
+            className: button.className
+          });
+          button.style.display = 'none';
+          button.style.visibility = 'hidden';
+          button.style.opacity = '0';
+          button.setAttribute('aria-hidden', 'true');
+          hiddenCount++;
+        }
+      });
+      
+      if (hiddenCount > 0) {
+        console.log(`[GeofenceMap] Hidden ${hiddenCount} location button(s)`);
+      }
+      
+      // Also check buttons in the map container specifically
+      try {
+        const mapDiv = map.getDiv ? map.getDiv() : null;
+        if (mapDiv) {
+          const mapButtons = mapDiv.querySelectorAll('button');
+          mapButtons.forEach((button) => {
+            const title = (button.getAttribute('title') || button.getAttribute('aria-label') || '').toLowerCase();
+            if (title.includes('location')) {
+              button.style.display = 'none';
+              button.style.visibility = 'hidden';
+              button.style.opacity = '0';
+            }
+          });
+        }
+      } catch (_e) {
+        // Map div not available
+      }
+    };
+    
+    // Try to hide immediately and periodically (buttons load asynchronously)
+    hideLocationButton();
+    const timeout1 = setTimeout(hideLocationButton, 100);
+    const timeout2 = setTimeout(hideLocationButton, 500);
+    const interval = setInterval(hideLocationButton, 500);
+    
+    // Also listen for map idle event to catch buttons that load later
+    let idleListener = null;
+    try {
+      idleListener = map.addListener('idle', hideLocationButton);
+    } catch (_e) {
+      // Listener not available
+    }
+    
+    return () => {
+      clearTimeout(timeout1);
+      clearTimeout(timeout2);
+      clearInterval(interval);
+      if (idleListener && window.google?.maps?.event) {
+        try {
+          window.google.maps.event.removeListener(idleListener);
+        } catch (_e) {
+          // Ignore cleanup errors
+        }
+      }
+    };
+  }, [map]);
+
   return null;
 };
 
@@ -124,6 +313,7 @@ const GeofenceMap = forwardRef(
     const mapRef = useRef(null);
     const [currentRegion, setCurrentRegion] = useState(region);
     const [mapError, setMapError] = useState(null);
+    const [isUserInteracting, setIsUserInteracting] = useState(false);
     
     // Get Google Maps API key - fails fast if missing (required for maps)
     const apiKey = getGoogleMapsApiKey();
@@ -132,14 +322,14 @@ const GeofenceMap = forwardRef(
     // Use AdvancedMarker if Map ID is available, otherwise fall back to regular Marker
     const MarkerComponent = mapId ? AdvancedMarker : RegularMarker;
 
-    // Update current region when prop changes
+    // Update current region when prop changes (only if not user-interacting)
     useEffect(() => {
-      if (region) {
+      if (region && !isUserInteracting) {
         setCurrentRegion(region);
       }
-    }, [region]);
+    }, [region, isUserInteracting]);
 
-    const center = useMemo(() => {
+    const defaultCenter = useMemo(() => {
       if (currentRegion?.latitude && currentRegion?.longitude) {
         return { lat: currentRegion.latitude, lng: currentRegion.longitude };
       }
@@ -147,7 +337,7 @@ const GeofenceMap = forwardRef(
       return { lat: 1.3521, lng: 103.8198 };
     }, [currentRegion]);
 
-    const zoom = useMemo(() => getZoomFromDelta(currentRegion?.latitudeDelta), [currentRegion?.latitudeDelta]);
+    const defaultZoom = useMemo(() => getZoomFromDelta(currentRegion?.latitudeDelta), [currentRegion?.latitudeDelta]);
 
     // Expose methods for programmatic map control (compatible with react-native-maps API)
     useImperativeHandle(ref, () => ({
@@ -156,6 +346,9 @@ const GeofenceMap = forwardRef(
         const map = mapRef.current;
         
         if (map && typeof map.panTo === 'function') {
+          // Temporarily disable user interaction flag for programmatic updates
+          setIsUserInteracting(false);
+          
           // Use Google Maps API methods
           const newCenter = { lat: newRegion.latitude, lng: newRegion.longitude };
           const newZoom = getZoomFromDelta(newRegion.latitudeDelta || 0.01);
@@ -215,6 +408,54 @@ const GeofenceMap = forwardRef(
           },
         },
       });
+    };
+
+    // Handle zoom changes from user interaction
+    const handleZoomChanged = () => {
+      if (!mapRef.current) return;
+      setIsUserInteracting(true);
+      
+      try {
+        const map = mapRef.current;
+        const center = map.getCenter();
+        const zoom = map.getZoom();
+        if (center) {
+          const latDelta = 360 / Math.pow(2, zoom);
+          const newRegion = {
+            latitude: center.lat(),
+            longitude: center.lng(),
+            latitudeDelta: latDelta,
+            longitudeDelta: latDelta,
+          };
+          setCurrentRegion(newRegion);
+        }
+      } catch (_err) {
+        // Map not ready
+      }
+    };
+
+    // Handle center changes from user interaction (panning)
+    const handleCenterChanged = () => {
+      if (!mapRef.current) return;
+      setIsUserInteracting(true);
+      
+      try {
+        const map = mapRef.current;
+        const center = map.getCenter();
+        const zoom = map.getZoom();
+        if (center) {
+          const latDelta = 360 / Math.pow(2, zoom);
+          const newRegion = {
+            latitude: center.lat(),
+            longitude: center.lng(),
+            latitudeDelta: latDelta,
+            longitudeDelta: latDelta,
+          };
+          setCurrentRegion(newRegion);
+        }
+      } catch (_err) {
+        // Map not ready
+      }
     };
 
     // Handle map errors - check console for Google Maps errors
@@ -286,14 +527,25 @@ const GeofenceMap = forwardRef(
     }
 
     return (
-      <APIProvider apiKey={apiKey} libraries={mapId ? ['marker'] : []}>
+      <APIProvider apiKey={apiKey} libraries={mapId ? ['marker', 'places'] : ['places']}>
         <Map
           style={style}
-          center={center}
-          zoom={zoom}
+          defaultCenter={defaultCenter}
+          defaultZoom={defaultZoom}
           gestureHandling="greedy"
-          disableDefaultUI={false}
+          disableDefaultUI={true}
+          zoomControl={false}
+          fullscreenControl={false}
+          mapTypeControl={false}
+          streetViewControl={false}
           onClick={handleClick}
+          onZoomChanged={handleZoomChanged}
+          onCenterChanged={handleCenterChanged}
+          onIdle={() => {
+            // Reset interaction flag after idle
+            // MapController will handle onRegionChangeComplete callback
+            setIsUserInteracting(false);
+          }}
           mapId={mapId}
           {...rest}
         >
@@ -342,5 +594,5 @@ const GeofenceMap = forwardRef(
 GeofenceMap.displayName = 'GeofenceMap';
 
 export default GeofenceMap;
-export { Polygon, Marker, PROVIDER_GOOGLE };
+export { Polygon, Marker, Circle, InfoWindow, PROVIDER_GOOGLE };
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Pressable, FlatList, Modal, TextInput } from 'react-native';
-import GeofenceMap, { Polygon, Marker, PROVIDER_GOOGLE } from '../components/GeofenceMap';
+import GeofenceMap, { Polygon, Marker, Circle, PROVIDER_GOOGLE } from '../components/GeofenceMap';
 import { useLocation } from '../context/LocationContext';
 import { useThemeTokens } from '../theme/ThemeProvider';
 import { Ionicons } from '@expo/vector-icons';
@@ -508,34 +508,79 @@ const LocationSelectionScreen = ({ navigation }) => {
               />
             )}
 
-            {/* Geofence Polygons */}
-            {geofences.map((geofence) => (
-              geofence.coordinates && geofence.coordinates.length > 0 ? (
-                <Polygon
-                  key={geofence.id}
-                  coordinates={geofence.coordinates.map(coord => ({
-                    latitude: coord[1],
-                    longitude: coord[0],
-                  }))}
-                  fillColor={getPolygonColor(geofence)}
-                  strokeColor={getPolygonBorderColor(geofence)}
-                  strokeWidth={3}
-                  onPress={() => handleGeofenceSelect(geofence)}
-                />
-              ) : null
-            ))}
+            {/* Geofence Polygons and Circles */}
+            {geofences.map((geofence) => {
+              // Handle circle geofences
+              if (geofence.type === 'circle' && geofence.center && geofence.radius) {
+                const isSelected = selectedGeofence?.id === geofence.id;
+                const isCurrent = currentGeofence?.id === geofence.id;
+                const fillColor = isCurrent 
+                  ? 'rgba(34, 197, 94, 0.4)' 
+                  : isSelected 
+                  ? 'rgba(59, 130, 246, 0.4)' 
+                  : 'rgba(156, 163, 175, 0.2)';
+                const strokeColor = isCurrent 
+                  ? '#22c55e' 
+                  : isSelected 
+                  ? '#3b82f6' 
+                  : '#9ca3af';
+                
+                return (
+                  <Circle
+                    key={geofence.id}
+                    center={{
+                      latitude: geofence.center[1],
+                      longitude: geofence.center[0]
+                    }}
+                    radius={geofence.radius}
+                    fillColor={fillColor}
+                    strokeColor={strokeColor}
+                    strokeWidth={3}
+                    onPress={() => handleGeofenceSelect(geofence)}
+                  />
+                );
+              }
+              
+              // Handle polygon geofences
+              if (geofence.coordinates && geofence.coordinates.length > 0) {
+                return (
+                  <Polygon
+                    key={geofence.id}
+                    coordinates={geofence.coordinates.map(coord => ({
+                      latitude: coord[1],
+                      longitude: coord[0],
+                    }))}
+                    fillColor={getPolygonColor(geofence)}
+                    strokeColor={getPolygonBorderColor(geofence)}
+                    strokeWidth={3}
+                    onPress={() => handleGeofenceSelect(geofence)}
+                  />
+                );
+              }
+              
+              return null;
+            })}
 
             {/* Enhanced Geofence Labels with Better Design */}
             {geofences.map((geofence) => {
-              if (!geofence.coordinates || geofence.coordinates.length === 0) return null;
-
-              const center = geofence.coordinates.reduce(
-                (acc, coord) => ({
-                  latitude: acc.latitude + coord[1] / geofence.coordinates.length,
-                  longitude: acc.longitude + coord[0] / geofence.coordinates.length,
-                }),
-                { latitude: 0, longitude: 0 }
-              );
+              // Calculate center for both polygon and circle geofences
+              let center;
+              if (geofence.type === 'circle' && geofence.center) {
+                center = {
+                  latitude: geofence.center[1],
+                  longitude: geofence.center[0]
+                };
+              } else if (geofence.coordinates && geofence.coordinates.length > 0) {
+                center = geofence.coordinates.reduce(
+                  (acc, coord) => ({
+                    latitude: acc.latitude + coord[1] / geofence.coordinates.length,
+                    longitude: acc.longitude + coord[0] / geofence.coordinates.length,
+                  }),
+                  { latitude: 0, longitude: 0 }
+                );
+              } else {
+                return null;
+              }
 
               const isSelected = selectedGeofence?.id === geofence.id;
               const isCurrent = currentGeofence?.id === geofence.id;
