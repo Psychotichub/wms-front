@@ -11,6 +11,7 @@ const AttendanceStatusScreen = ({ navigation }) => {
   const {
     attendanceStatus,
     currentGeofence,
+    selectedGeofence,
     location,
     loadGeofences,
     manualCheckOut,
@@ -31,19 +32,22 @@ const AttendanceStatusScreen = ({ navigation }) => {
   // Explicitly set to false on web to prevent warnings
   const USE_NATIVE_DRIVER = Platform.OS === 'ios' || Platform.OS === 'android';
 
-  // Load geofence data for current location
+  // Load geofence data for current location or selected geofence
   useEffect(() => {
     const loadCurrentGeofenceData = async () => {
-      if (currentGeofence) {
+      const geofenceToLoad = currentGeofence || selectedGeofence;
+      if (geofenceToLoad) {
         const geofences = await loadGeofences();
-        const currentData = geofences?.find(g => g.id === currentGeofence.id);
+        const currentData = geofences?.find(g => g.id === geofenceToLoad.id);
         setCurrentGeofenceData(currentData);
+      } else {
+        setCurrentGeofenceData(null);
       }
     };
 
     loadCurrentGeofenceData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentGeofence]);
+  }, [currentGeofence, selectedGeofence]);
 
   // Entrance animations
   useEffect(() => {
@@ -83,10 +87,16 @@ const AttendanceStatusScreen = ({ navigation }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attendanceStatus.isCheckedIn]);
 
+  // Helper to get display geofence name (used before early return)
+  const getDisplayGeofenceName = () => {
+    const displayGeofence = currentGeofence || selectedGeofence;
+    return attendanceStatus.locationName || displayGeofence?.name || 'Current Location';
+  };
+
   const handleCheckOut = async () => {
     Alert.alert(
       'Check Out',
-      `Are you sure you want to check out from ${currentGeofence?.name}?`,
+      `Are you sure you want to check out from ${getDisplayGeofenceName()}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -181,8 +191,11 @@ const AttendanceStatusScreen = ({ navigation }) => {
     });
   };
 
-  // If user is not checked in, redirect to location selection
-  if (!attendanceStatus.isCheckedIn || !currentGeofence) {
+  // If user is not checked in, show status message
+  // Only show message if truly not checked in
+  // If checked in but currentGeofence is null, we'll use attendanceStatus.locationName
+  if (!attendanceStatus.isCheckedIn) {
+    const hasSelectedLocation = !!selectedGeofence;
     return (
       <Screen>
         <View style={[styles.container, { backgroundColor: t.colors.background }]}>
@@ -198,24 +211,45 @@ const AttendanceStatusScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.notCheckedInContainer}>
-            <EmptyState
-              icon="time-outline"
-              title="Not currently checked in"
-              subtitle="Select a location and arrive to auto check in."
-            />
-
-            <Pressable
-              style={[styles.selectLocationButton, { backgroundColor: t.colors.primary }]}
-              onPress={() => navigation.navigate('Location Selection')}
-            >
-              <Ionicons name="location-outline" size={20} color="#ffffff" />
-              <Text style={styles.selectLocationText}>Select Location</Text>
-            </Pressable>
+            {hasSelectedLocation ? (
+              <>
+                <EmptyState
+                  icon="time-outline"
+                  title="Not currently checked in"
+                  subtitle={`Location "${selectedGeofence.name}" is selected. Arrive at the location to automatically check in.`}
+                />
+                <View style={styles.infoMessage}>
+                  <Ionicons name="information-circle-outline" size={20} color={t.colors.textSecondary} />
+                  <Text style={[styles.infoText, { color: t.colors.textSecondary }]}>
+                    Your selected location is saved and will be used automatically.
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <EmptyState
+                  icon="location-outline"
+                  title="No location selected"
+                  subtitle="Please go to Location Selection page to choose your work location. Once selected, it will be saved for future use."
+                />
+                <View style={styles.infoMessage}>
+                  <Ionicons name="information-circle-outline" size={20} color={t.colors.textSecondary} />
+                  <Text style={[styles.infoText, { color: t.colors.textSecondary }]}>
+                    Navigate to "Location Selection" from the menu to set up your location.
+                  </Text>
+                </View>
+              </>
+            )}
           </View>
         </View>
       </Screen>
     );
   }
+
+  // If checked in but currentGeofence is not set yet, try to load it or use selectedGeofence
+  // This can happen if user is already inside when they select the geofence
+  const displayGeofence = currentGeofence || selectedGeofence;
+  const displayGeofenceName = attendanceStatus.locationName || displayGeofence?.name || 'Current Location';
 
   return (
     <Screen>
@@ -275,7 +309,7 @@ const AttendanceStatusScreen = ({ navigation }) => {
             </Animated.View>
 
             <Text style={[styles.locationName, { color: t.colors.text }]}>
-              {currentGeofence.name}
+              {displayGeofenceName}
             </Text>
 
             <View style={styles.elapsedTimeContainer}>
@@ -310,7 +344,7 @@ const AttendanceStatusScreen = ({ navigation }) => {
                 region={getMapRegion()}
                 location={location}
                 geofenceData={currentGeofenceData}
-                geofenceName={currentGeofence?.name}
+                geofenceName={displayGeofenceName}
               />
             </View>
           </View>
@@ -588,6 +622,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  infoMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 8,
+    maxWidth: '90%',
+  },
+  infoText: {
+    fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
+    lineHeight: 20,
   },
 });
 
