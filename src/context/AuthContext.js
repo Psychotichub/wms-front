@@ -300,6 +300,19 @@ export const AuthProvider = ({ children }) => {
         });
       }
       
+      // Validate that required fields are present
+      if (!data || (!data.token && !data.user)) {
+        throw new Error('Invalid login response: missing token or user data');
+      }
+      
+      if (!data.token) {
+        throw new Error('Login failed: no access token received');
+      }
+      
+      if (!data.user) {
+        throw new Error('Login failed: no user data received');
+      }
+      
       setToken(data.token);
       tokenRef.current = data.token;
       if (data.refreshToken) {

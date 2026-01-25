@@ -11,6 +11,59 @@ const getZoomFromDelta = (latDelta) => {
   return Math.min(20, Math.max(1, Math.round(zoom)));
 };
 
+// Wrapper components to match react-native-maps API for compatibility
+// These must be defined before GeofenceMap to ensure proper exports
+const Marker = forwardRef(({ coordinate, position, title, description, pinColor, ...props }, ref) => {
+  // Convert coordinate (native format) to position (web format)
+  const markerPosition = position || (coordinate ? { lat: coordinate.latitude, lng: coordinate.longitude } : null);
+  
+  if (!markerPosition) {
+    console.warn('Marker: coordinate or position is required');
+    return null;
+  }
+
+  // Use AdvancedMarker if Map ID is available, otherwise regular Marker
+  const mapId = getGoogleMapsMapId();
+  const MarkerComponent = mapId ? AdvancedMarker : RegularMarker;
+
+  return (
+    <MarkerComponent
+      ref={ref}
+      position={markerPosition}
+      title={title}
+      {...props}
+    />
+  );
+});
+
+Marker.displayName = 'Marker';
+
+const Polygon = forwardRef(({ coordinates, paths, fillColor, strokeColor, strokeWidth, ...props }, ref) => {
+  // Convert coordinates (native format) to paths (web format)
+  const polygonPaths = paths || (coordinates ? coordinates.map(coord => ({ lat: coord.latitude, lng: coord.longitude })) : null);
+  
+  if (!polygonPaths || polygonPaths.length === 0) {
+    console.warn('Polygon: coordinates or paths is required');
+    return null;
+  }
+
+  return (
+    <GooglePolygon
+      ref={ref}
+      paths={polygonPaths}
+      options={{
+        fillColor: fillColor || 'rgba(34, 197, 94, 0.3)',
+        strokeColor: strokeColor || '#22c55e',
+        strokeWeight: strokeWidth || 2,
+        ...props.options
+      }}
+      {...props}
+    />
+  );
+});
+
+Polygon.displayName = 'Polygon';
+
 // Internal component to access map instance
 const MapController = ({ mapRef, onRegionChangeComplete }) => {
   const map = useMap();
@@ -90,7 +143,8 @@ const GeofenceMap = forwardRef(
       if (currentRegion?.latitude && currentRegion?.longitude) {
         return { lat: currentRegion.latitude, lng: currentRegion.longitude };
       }
-      return { lat: 0, lng: 0 };
+      // Default to Singapore if no region provided
+      return { lat: 1.3521, lng: 103.8198 };
     }, [currentRegion]);
 
     const zoom = useMemo(() => getZoomFromDelta(currentRegion?.latitudeDelta), [currentRegion?.latitudeDelta]);
@@ -284,11 +338,6 @@ const GeofenceMap = forwardRef(
     );
   }
 );
-
-// Export Marker component - will use AdvancedMarker if Map ID is configured, otherwise regular Marker
-// Note: This is a dynamic export, so consumers should import Marker from this file
-const Marker = RegularMarker; // Default export for compatibility
-const Polygon = GooglePolygon;
 
 GeofenceMap.displayName = 'GeofenceMap';
 

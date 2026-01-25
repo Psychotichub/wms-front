@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { StyleSheet, View, Text, Platform, ActivityIndicator, Dimensions } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { StyleSheet, View, Text, Platform, ActivityIndicator, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import GeofenceMap, { Marker, Polygon } from '../GeofenceMap';
 import { useAuth } from '../../context/AuthContext';
@@ -11,11 +11,13 @@ const UPDATE_INTERVAL = 30000; // 30 seconds
 const RealTimeMapWidget = ({ style }) => {
   const { request } = useAuth();
   const t = useThemeTokens();
+  const mapRef = useRef(null);
   const [activeLocations, setActiveLocations] = useState([]);
   const [geofences, setGeofences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [mapRegion, setMapRegion] = useState(null);
 
   const fetchMapData = useCallback(async () => {
     try {
@@ -49,7 +51,7 @@ const RealTimeMapWidget = ({ style }) => {
   }, [fetchMapData]);
 
   // Calculate map region to fit all markers
-  const mapRegion = useMemo(() => {
+  const calculatedRegion = useMemo(() => {
     const allPoints = [
       ...activeLocations.map(loc => ({ lat: loc.latitude, lon: loc.longitude })),
       ...geofences.flatMap(gf => {
@@ -64,10 +66,10 @@ const RealTimeMapWidget = ({ style }) => {
     ];
 
     if (allPoints.length === 0) {
-      // Default region (can be customized)
+      // Default to Singapore instead of 0,0
       return {
-        latitude: 0,
-        longitude: 0,
+        latitude: 1.3521,
+        longitude: 103.8198,
         latitudeDelta: 0.1,
         longitudeDelta: 0.1
       };
@@ -78,8 +80,8 @@ const RealTimeMapWidget = ({ style }) => {
 
     if (lats.length === 0 || lons.length === 0) {
       return {
-        latitude: 0,
-        longitude: 0,
+        latitude: 1.3521,
+        longitude: 103.8198,
         latitudeDelta: 0.1,
         longitudeDelta: 0.1
       };
@@ -100,6 +102,29 @@ const RealTimeMapWidget = ({ style }) => {
       longitudeDelta: lonDelta
     };
   }, [activeLocations, geofences]);
+
+  // Update map region when calculated region changes
+  useEffect(() => {
+    if (calculatedRegion) {
+      setMapRegion(calculatedRegion);
+    }
+  }, [calculatedRegion]);
+
+  // Zoom functions
+  const animateToRegion = useCallback((region) => {
+    if (!region) return;
+    mapRef.current?.animateToRegion(region, 500);
+    setMapRegion(region);
+  }, []);
+
+  const zoom = useCallback((factor) => {
+    if (!mapRegion) return;
+    animateToRegion({
+      ...mapRegion,
+      latitudeDelta: mapRegion.latitudeDelta * factor,
+      longitudeDelta: mapRegion.longitudeDelta * factor,
+    });
+  }, [mapRegion, animateToRegion]);
 
   const formatElapsedTime = (ms) => {
     const hours = Math.floor(ms / (1000 * 60 * 60));
@@ -161,13 +186,16 @@ const RealTimeMapWidget = ({ style }) => {
       </View>
 
       <View style={styles.mapContainer}>
-        {mapRegion.latitude !== 0 || mapRegion.longitude !== 0 ? (
-          <GeofenceMap
-            region={mapRegion}
-            style={styles.map}
-            scrollEnabled={true}
-            zoomEnabled={true}
-          >
+        {(mapRegion && (mapRegion.latitude !== 0 || mapRegion.longitude !== 0)) ? (
+          <>
+            <GeofenceMap
+              ref={mapRef}
+              region={mapRegion || calculatedRegion}
+              style={styles.map}
+              scrollEnabled={true}
+              zoomEnabled={true}
+              onRegionChangeComplete={(region) => setMapRegion(region)}
+            >
             {/* Render geofences */}
             {geofences.map((geofence) => {
               if (geofence.type === 'circle' && geofence.center) {
@@ -231,7 +259,25 @@ const RealTimeMapWidget = ({ style }) => {
                 pinColor="#22c55e"
               />
             ))}
-          </GeofenceMap>
+            </GeofenceMap>
+            {/* Zoom Controls */}
+            <View style={[styles.zoomControls, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}>
+              <Pressable 
+                style={styles.zoomButton} 
+                onPress={() => zoom(0.7)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="add" size={18} color={t.colors.text} />
+              </Pressable>
+              <Pressable 
+                style={styles.zoomButton} 
+                onPress={() => zoom(1.3)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="remove" size={18} color={t.colors.text} />
+              </Pressable>
+            </View>
+          </>
         ) : (
           <EmptyState
             icon="map-outline"
@@ -311,10 +357,41 @@ const styles = StyleSheet.create({
     height: 250,
     borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: '#f0f0f0'
+    backgroundColor: '#f0f0f0',
+    position: 'relative'
   },
   map: {
     flex: 1
+  },
+  zoomControls: {
+    position: 'absolute',
+    right: 12,
+    bottom: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 4,
+    gap: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4
+      },
+      android: {
+        elevation: 4
+      },
+      default: {
+        boxShadow: '0px 2px 8px rgba(0,0,0,0.15)'
+      }
+    })
+  },
+  zoomButton: {
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 32,
+    minHeight: 32
   },
   legend: {
     flexDirection: 'row',

@@ -47,7 +47,8 @@ export const createApiClient = ({
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
-      const response = await fetch(buildUrl(apiUrl, path), {
+      const requestUrl = buildUrl(apiUrl, path);
+      const response = await fetch(requestUrl, {
         ...options,
         headers,
         signal: controller.signal
@@ -60,9 +61,60 @@ export const createApiClient = ({
       const contentType = response.headers.get('content-type');
 
       if (contentType && contentType.includes('application/json')) {
-        data = await response.json().catch(() => ({}));
+        try {
+          // Read as text first to check for HTML (response can only be read once)
+          const text = await response.text();
+          const isHtmlResponse = text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html');
+          
+          if (isHtmlResponse && response.ok) {
+            const errorMsg = 
+              'API request returned HTML instead of JSON. ' +
+              'This usually means the API URL is not configured correctly or the backend server is not running. ' +
+              `Current API URL: ${apiUrl || 'not set'}`;
+            
+            const error = new Error(errorMsg);
+            error.status = response.status;
+            error.data = { contentType, isHtmlResponse: true };
+            throw error;
+          }
+          
+          // Parse as JSON if not HTML
+          data = JSON.parse(text);
+        } catch (parseError) {
+          if (parseError.status) {
+            // Re-throw our custom HTML error
+            throw parseError;
+          }
+          
+          if (isDev) {
+            console.error('❌ JSON parse error:', parseError);
+            console.error('Response status:', response.status);
+            console.error('Content-Type:', contentType);
+          }
+          data = {};
+        }
       } else {
-        data = await response.text().catch(() => ({}));
+        const text = await response.text().catch(() => '');
+        
+        // Detect HTML responses (usually means hitting frontend instead of backend)
+        const isHtmlResponse = text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html');
+        
+        if (isHtmlResponse && response.ok) {
+          const errorMsg = 
+            'API request returned HTML instead of JSON. ' +
+            'This usually means the API URL is not configured correctly or the backend server is not running. ' +
+            `Current API URL: ${apiUrl || 'not set'}`;
+          
+          const error = new Error(errorMsg);
+          error.status = response.status;
+          error.data = { contentType, isHtmlResponse: true };
+          throw error;
+        }
+        
+        if (isDev && contentType) {
+          console.warn('⚠️ Non-JSON response:', contentType, text.substring(0, 100));
+        }
+        data = text;
       }
 
       if (!response.ok) {
