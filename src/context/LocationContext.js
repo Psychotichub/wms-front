@@ -650,6 +650,15 @@ export const LocationProvider = ({ children }) => {
       // Log full error details including validation errors
       const errorData = error.data || error.response?.data || {};
       
+      // Handle 6-hour cooldown error
+      if (error.status === 403 && errorData.details?.remainingHours !== undefined) {
+        const { remainingHours, remainingMinutes, nextCheckInTime } = errorData.details;
+        const nextCheckIn = new Date(nextCheckInTime);
+        const errorMessage = `You cannot check in yet. Please wait ${remainingHours} hours (${remainingMinutes} minutes) before checking in again. Next check-in available at ${nextCheckIn.toLocaleTimeString()}.`;
+        console.error('[LocationContext] handleCheckIn: 6-hour cooldown active', errorData.details);
+        throw new Error(errorMessage);
+      }
+      
       // Handle "Already checked in" error gracefully by syncing state
       if (error.message === 'Already checked in' || errorData.error === 'Already checked in') {
         console.log('[LocationContext] handleCheckIn: Already checked in on backend, syncing state', errorData);
@@ -745,6 +754,12 @@ export const LocationProvider = ({ children }) => {
   };
 
   const handleCheckOut = async (geofence, currentLoc) => {
+    console.log('[LocationContext] handleCheckOut called with:', {
+      geofence: geofence?.name || 'none',
+      hasLocation: !!currentLoc,
+      hasCoords: !!currentLoc?.coords
+    });
+    
     const deviceInfo = getDeviceInfo();
     const checkOutData = {
       ...(geofence?.id && { locationId: geofence.id }), // Only include locationId if available
@@ -755,10 +770,18 @@ export const LocationProvider = ({ children }) => {
       deviceInfo
     };
 
-    await request('/api/employees/attendance/checkout', {
-      method: 'POST',
-      body: checkOutData
-    });
+    console.log('[LocationContext] handleCheckOut: Sending checkout request:', checkOutData);
+    
+    try {
+      const response = await request('/api/employees/attendance/checkout', {
+        method: 'POST',
+        body: checkOutData
+      });
+      console.log('[LocationContext] handleCheckOut: Checkout response:', response);
+    } catch (error) {
+      console.error('[LocationContext] handleCheckOut: Checkout request failed:', error);
+      throw error;
+    }
 
     setAttendanceStatus((prev) => ({
       ...prev,
@@ -854,11 +877,24 @@ export const LocationProvider = ({ children }) => {
   };
 
   const manualCheckOut = async () => {
+    console.log('[LocationContext] manualCheckOut called');
+    console.log('[LocationContext] Current state:', {
+      hasLocation: !!location,
+      hasCurrentGeofence: !!currentGeofence,
+      hasSelectedGeofence: !!selectedGeofence,
+      attendanceStatus: {
+        isCheckedIn: attendanceStatus.isCheckedIn,
+        locationName: attendanceStatus.locationName
+      }
+    });
+    
     // Get current location - try multiple methods
     let currentLoc = location;
     if (!currentLoc || !currentLoc.coords) {
       try {
+        console.log('[LocationContext] manualCheckOut: Attempting to get current location...');
         currentLoc = await getCurrentLocation();
+        console.log('[LocationContext] manualCheckOut: Got current location:', currentLoc);
       } catch (locationError) {
         // If location fetch fails, try to use a default location or proceed without precise coordinates
         console.warn('[LocationContext] manualCheckOut: Could not get current location, using fallback', locationError);

@@ -64,7 +64,9 @@ export const NotificationProvider = ({ children }) => {
       low_stock: true,
       daily_report_missing: true,
       contract_exceeded: true,
-      inventory_exceeded: true
+      inventory_exceeded: true,
+      attendance_checkin: true,
+      attendance_checkout: true
     }
   });
 

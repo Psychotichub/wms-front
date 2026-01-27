@@ -86,31 +86,58 @@ const AttendanceStatusScreen = ({ navigation }) => {
   };
 
   const handleCheckOut = async () => {
+    console.log('[AttendanceStatusScreen] handleCheckOut called');
     const locationName = getDisplayGeofenceName();
-    Alert.alert(
-      'Check Out',
-      `Are you sure you want to check out from "${locationName}"?\n\nThis will end your current attendance session, even if you are still at the location.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Check Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('[AttendanceStatusScreen] Starting manual checkout...');
-              await manualCheckOut();
-              console.log('[AttendanceStatusScreen] Manual checkout successful');
-              Alert.alert('Success', 'Successfully checked out');
-              navigation.goBack();
-            } catch (error) {
-              console.error('[AttendanceStatusScreen] Manual checkout failed:', error);
-              const errorMessage = error?.message || 'Failed to check out. Please try again.';
-              Alert.alert('Error', errorMessage);
+    console.log('[AttendanceStatusScreen] Location name:', locationName);
+    console.log('[AttendanceStatusScreen] manualCheckOut function available:', typeof manualCheckOut);
+    
+    // On web, Alert.alert might not work, so use window.confirm as fallback
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(
+        `Are you sure you want to check out from "${locationName}"?\n\nThis will end your current attendance session, even if you are still at the location.`
+      );
+      if (!confirmed) {
+        console.log('[AttendanceStatusScreen] Checkout cancelled by user');
+        return;
+      }
+      
+      try {
+        console.log('[AttendanceStatusScreen] Starting manual checkout...');
+        await manualCheckOut();
+        console.log('[AttendanceStatusScreen] Manual checkout successful');
+        window.alert('Successfully checked out');
+        navigation.goBack();
+      } catch (error) {
+        console.error('[AttendanceStatusScreen] Manual checkout failed:', error);
+        const errorMessage = error?.message || 'Failed to check out. Please try again.';
+        window.alert(`Error: ${errorMessage}`);
+      }
+    } else {
+      Alert.alert(
+        'Check Out',
+        `Are you sure you want to check out from "${locationName}"?\n\nThis will end your current attendance session, even if you are still at the location.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Check Out',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                console.log('[AttendanceStatusScreen] Starting manual checkout...');
+                await manualCheckOut();
+                console.log('[AttendanceStatusScreen] Manual checkout successful');
+                Alert.alert('Success', 'Successfully checked out');
+                navigation.goBack();
+              } catch (error) {
+                console.error('[AttendanceStatusScreen] Manual checkout failed:', error);
+                const errorMessage = error?.message || 'Failed to check out. Please try again.';
+                Alert.alert('Error', errorMessage);
+              }
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleRefreshStatus = async () => {
