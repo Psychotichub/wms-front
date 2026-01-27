@@ -16,6 +16,12 @@ const styles = StyleSheet.create({
   drawerContent: {
     flex: 1
   },
+  drawerScrollView: {
+    flex: 1
+  },
+  drawerScrollContent: {
+    paddingBottom: 16
+  },
   drawerHeader: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -70,6 +70,7 @@ export const LocationProvider = ({ children }) => {
   });
 
   const [selectedGeofenceId, setSelectedGeofenceId] = useState(null);
+  const isExplicitlyDeselectingRef = useRef(false); // Track if user explicitly deselects vs logout
   const selectedGeofence = useMemo(
     () => geofences.find((g) => g.id === selectedGeofenceId) || null,
     [geofences, selectedGeofenceId]
@@ -138,7 +139,6 @@ export const LocationProvider = ({ children }) => {
   };
 
   const notifyGeofenceEvent = async ({ key, title, body }) => {
-    if (Platform.OS === 'web') return;
     try {
       // Deduplicate: avoid firing the same notification repeatedly due to GPS jitter/retries.
       const now = Date.now();
@@ -146,6 +146,27 @@ export const LocationProvider = ({ children }) => {
         return;
       }
 
+      // For web, use browser notifications if available
+      if (Platform.OS === 'web') {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification(title, {
+              body: body,
+              icon: '/favicon.ico',
+              tag: key || 'geofence-event',
+              requireInteraction: false
+            });
+            if (key) {
+              lastLocalNotifRef.current = { key, at: now };
+            }
+          } catch (webNotifError) {
+            console.warn('Failed to show web notification:', webNotifError);
+          }
+        }
+        return;
+      }
+
+      // For native platforms, use Expo Notifications
       await ensureLocalNotificationsReady();
       if (!notifReadyRef.current) return;
       // scheduleNotificationAsync still works without channel on iOS; on Android we set channel above.
@@ -260,34 +281,21 @@ export const LocationProvider = ({ children }) => {
 
   const checkGeofenceStatus = (currentLoc, forceCheck = false) => {
     if (!currentLoc || geofences.length === 0) {
-      console.log('[LocationContext] checkGeofenceStatus: No location or geofences available', {
-        hasLocation: !!currentLoc,
-        geofencesCount: geofences.length
-      });
       return;
     }
     
     if (!selectedGeofenceId) {
-      console.log('[LocationContext] checkGeofenceStatus: No geofence selected');
       if (currentGeofence) setCurrentGeofence(null);
       return;
     }
 
     // Check if within tracking window
     if (!isWithinTrackingWindow()) {
-      console.log('[LocationContext] checkGeofenceStatus: Outside tracking window', {
-        workingHours,
-        currentTime: new Date().toTimeString()
-      });
       return; // Don't check geofence if outside tracking window
     }
 
     const target = geofences.find((g) => g.id === selectedGeofenceId);
     if (!target) {
-      console.warn('[LocationContext] checkGeofenceStatus: Selected geofence not found', {
-        selectedGeofenceId,
-        availableGeofenceIds: geofences.map(g => g.id)
-      });
       if (currentGeofence) setCurrentGeofence(null);
       return;
     }
@@ -301,32 +309,15 @@ export const LocationProvider = ({ children }) => {
       if (target.type === 'circle' && target.center && target.radius) {
         const [centerLon, centerLat] = target.center;
         const distance = haversineDistanceMeters(latitude, longitude, centerLat, centerLon);
-        console.log('[LocationContext] checkGeofenceStatus: Circle geofence check', {
-          geofenceName: target.name,
-          distance,
-          radius: target.radius,
-          isInside: distance <= target.radius
-        });
         if (distance <= target.radius) {
           inside = target;
         }
       } else if (target.coordinates && target.coordinates.length > 0) {
         const polygon = turfPolygon([target.coordinates]);
         const isInside = booleanPointInPolygon(point, polygon);
-        console.log('[LocationContext] checkGeofenceStatus: Polygon geofence check', {
-          geofenceName: target.name,
-          coordinatesCount: target.coordinates.length,
-          isInside
-        });
         if (isInside) {
           inside = target;
         }
-      } else {
-        console.warn('[LocationContext] checkGeofenceStatus: Geofence has invalid format', {
-          geofenceId: target.id,
-          geofenceName: target.name,
-          type: target.type
-        });
       }
     } catch (error) {
       console.error('[LocationContext] Error checking geofence:', error);
@@ -334,7 +325,6 @@ export const LocationProvider = ({ children }) => {
 
     // If forceCheck is true, always trigger transition check (for when user is already inside)
     if (forceCheck && inside && !currentGeofence) {
-      console.log('[LocationContext] checkGeofenceStatus: Force check - user already inside selected geofence');
       handleGeofenceTransition(inside, currentLoc);
     } else {
       handleGeofenceTransition(inside, currentLoc);
@@ -628,7 +618,7 @@ export const LocationProvider = ({ children }) => {
     try {
       const result = await request('/api/employees/attendance/checkin', {
         method: 'POST',
-        body: JSON.stringify(checkInData)
+        body: checkInData
       });
 
       console.log('[LocationContext] handleCheckIn: Check-in successful', result);
@@ -757,17 +747,17 @@ export const LocationProvider = ({ children }) => {
   const handleCheckOut = async (geofence, currentLoc) => {
     const deviceInfo = getDeviceInfo();
     const checkOutData = {
-      locationId: geofence.id,
-      latitude: currentLoc.coords.latitude,
-      longitude: currentLoc.coords.longitude,
+      ...(geofence?.id && { locationId: geofence.id }), // Only include locationId if available
+      latitude: currentLoc.coords.latitude || 0,
+      longitude: currentLoc.coords.longitude || 0,
       timestamp: new Date().toISOString(),
-      accuracy: currentLoc.coords.accuracy,
+      accuracy: currentLoc.coords.accuracy || 1000,
       deviceInfo
     };
 
     await request('/api/employees/attendance/checkout', {
       method: 'POST',
-      body: JSON.stringify(checkOutData)
+      body: checkOutData
     });
 
     setAttendanceStatus((prev) => ({
@@ -784,16 +774,16 @@ export const LocationProvider = ({ children }) => {
     try {
       await request('/api/time/stop', {
         method: 'POST',
-        body: JSON.stringify({ notes: 'Auto-stopped due to check-out' })
+        body: { notes: 'Auto-stopped due to check-out' }
       });
     } catch {
       // ignore if no active time entry
     }
 
     await notifyGeofenceEvent({
-      key: `left:${geofence.id}`,
+      key: `left:${geofence?.id || 'manual'}`,
       title: 'Left',
-      body: `You left ${geofence.name}. Attendance check-out recorded.`,
+      body: `You left ${geofence?.name || 'the location'}. Attendance check-out recorded.`,
     });
   };
 
@@ -802,18 +792,7 @@ export const LocationProvider = ({ children }) => {
     const wasInside = currentGeofence !== null;
     const isInside = newGeofence !== null;
 
-    console.log('[LocationContext] handleGeofenceTransition', {
-      wasInside,
-      isInside,
-      currentGeofenceName: currentGeofence?.name,
-      newGeofenceName: newGeofence?.name,
-      attendanceStatus: attendanceStatus.isCheckedIn ? 'checked in' : 'not checked in'
-    });
-
     if (lastAttendanceActionRef.current && now - lastAttendanceActionRef.current < 30000) {
-      console.log('[LocationContext] handleGeofenceTransition: Skipping - too soon after last action', {
-        timeSinceLastAction: now - lastAttendanceActionRef.current
-      });
       return;
     }
 
@@ -821,28 +800,16 @@ export const LocationProvider = ({ children }) => {
       const cooldownKey = `checkin-${newGeofence.id}`;
       const last = geofenceCooldownRef.current.get(cooldownKey);
       if (!last || now - last > 60000) {
-        console.log('[LocationContext] handleGeofenceTransition: Triggering check-in', {
-          geofenceName: newGeofence.name,
-          geofenceId: newGeofence.id
-        });
         handleCheckIn(newGeofence, currentLoc).catch((error) => {
           console.error('[LocationContext] handleGeofenceTransition: Check-in failed', error);
         });
         geofenceCooldownRef.current.set(cooldownKey, now);
         lastAttendanceActionRef.current = now;
-      } else {
-        console.log('[LocationContext] handleGeofenceTransition: Check-in cooldown active', {
-          timeSinceLastCheckIn: now - last
-        });
       }
     } else if (wasInside && !isInside) {
       const cooldownKey = `checkout-${currentGeofence.id}`;
       const last = geofenceCooldownRef.current.get(cooldownKey);
       if (!last || now - last > 60000) {
-        console.log('[LocationContext] handleGeofenceTransition: Triggering check-out', {
-          geofenceName: currentGeofence.name,
-          geofenceId: currentGeofence.id
-        });
         handleCheckOut(currentGeofence, currentLoc).catch((error) => {
           console.error('[LocationContext] handleGeofenceTransition: Check-out failed', error);
         });
@@ -887,10 +854,65 @@ export const LocationProvider = ({ children }) => {
   };
 
   const manualCheckOut = async () => {
-    if (!currentGeofence || !location) return;
-    geofenceCooldownRef.current.delete(`checkout-${currentGeofence.id}`);
+    // Get current location - try multiple methods
+    let currentLoc = location;
+    if (!currentLoc || !currentLoc.coords) {
+      try {
+        currentLoc = await getCurrentLocation();
+      } catch (locationError) {
+        // If location fetch fails, try to use a default location or proceed without precise coordinates
+        console.warn('[LocationContext] manualCheckOut: Could not get current location, using fallback', locationError);
+        // Create a minimal location object for checkout
+        currentLoc = {
+          coords: {
+            latitude: 0,
+            longitude: 0,
+            accuracy: 1000 // Low accuracy indicates approximate location
+          }
+        };
+      }
+    }
+
+    // Use currentGeofence, selectedGeofence, or create a minimal geofence from attendance data
+    let geofenceToUse = currentGeofence || selectedGeofence;
+    
+    // If no geofence is set, try to get it from attendance status
+    if (!geofenceToUse && attendanceStatus.locationName) {
+      // Try to find geofence by name from the loaded geofences
+      const geofenceByName = geofences.find(g => g.name === attendanceStatus.locationName);
+      if (geofenceByName) {
+        geofenceToUse = geofenceByName;
+      } else {
+        // Create a minimal geofence object for checkout
+        geofenceToUse = {
+          id: null, // Will be handled by backend
+          name: attendanceStatus.locationName
+        };
+      }
+    }
+
+    // If still no geofence, we can still checkout without locationId
+    if (!geofenceToUse) {
+      geofenceToUse = {
+        id: null,
+        name: attendanceStatus.locationName || 'Current Location'
+      };
+    }
+
+    // Ensure we have location coordinates (even if approximate)
+    if (!currentLoc || !currentLoc.coords) {
+      currentLoc = {
+        coords: {
+          latitude: 0,
+          longitude: 0,
+          accuracy: 1000
+        }
+      };
+    }
+
+    geofenceCooldownRef.current.delete(`checkout-${geofenceToUse.id || 'manual'}`);
     lastAttendanceActionRef.current = null;
-    await handleCheckOut(currentGeofence, location);
+    await handleCheckOut(geofenceToUse, currentLoc);
   };
 
   const clearGeofenceCooldowns = () => {
@@ -905,19 +927,68 @@ export const LocationProvider = ({ children }) => {
       if (!data?.success) return null;
 
       if (data.isCheckedIn && data.currentAttendance) {
+        const checkInTime = new Date(data.currentAttendance.checkInTime);
+        const locationName = data.currentAttendance.location?.locationName || null;
+        const locationId = data.currentAttendance.location?.locationId || null;
+        
         // Update state if checked in
         setAttendanceStatus({
           isCheckedIn: true,
-          checkInTime: new Date(data.currentAttendance.checkInTime),
+          checkInTime,
           checkOutTime: null,
-          locationName: data.currentAttendance.location?.locationName || attendanceStatus.locationName,
-          elapsedTime: data.currentAttendance.elapsedTime || 0,
+          locationName,
+          elapsedTime: data.currentAttendance.elapsedTime || (Date.now() - checkInTime.getTime()),
           validationStatus: data.currentAttendance.validationStatus,
           dayKey: getLocalDayKey()
         });
+
+        // Load geofences if not already loaded, then set current geofence
+        let geofencesList = geofences;
+        if (geofencesList.length === 0) {
+          geofencesList = await loadGeofences();
+        }
+        
+        // Set current geofence if locationId is available
+        if (locationId && geofencesList.length > 0) {
+          const geofence = geofencesList.find(g => g.id === locationId);
+          if (geofence) {
+            setCurrentGeofence(geofence);
+          }
+        } else if (locationName && geofencesList.length > 0) {
+          // Fallback: find by name
+          const geofence = geofencesList.find(g => g.name === locationName);
+          if (geofence) {
+            setCurrentGeofence(geofence);
+          }
+        }
+
+        // Store in AsyncStorage for offline support
+        if (storageKeys?.attendance) {
+          await AsyncStorage.setItem(
+            storageKeys.attendance,
+            JSON.stringify({
+              checkInTime: checkInTime.toISOString(),
+              locationName,
+              locationId,
+              userId,
+              dayKey: getLocalDayKey()
+            })
+          );
+        }
       } else if (!data.isCheckedIn && attendanceStatus.isCheckedIn) {
         // Clear state if not checked in but frontend thinks we are
         await clearAttendanceState();
+      } else if (!data.isCheckedIn) {
+        // Ensure state is cleared if not checked in
+        setAttendanceStatus({
+          isCheckedIn: false,
+          checkInTime: null,
+          checkOutTime: null,
+          locationName: null,
+          elapsedTime: 0,
+          dayKey: null
+        });
+        if (currentGeofence) setCurrentGeofence(null);
       }
       
       return data; // Return the data for caller to use
@@ -930,40 +1001,57 @@ export const LocationProvider = ({ children }) => {
   useEffect(() => {
     const initialize = async () => {
       try {
-        if (!token || !storageKeys?.attendance) return;
+        if (!token || !storageKeys) return;
+        
+        // Clean up legacy keys
         await AsyncStorage.multiRemove([LEGACY_ATTENDANCE_KEY, LEGACY_SELECTED_GEOFENCE_KEY]);
-        const saved = await AsyncStorage.getItem(storageKeys.attendance);
-        if (!saved) return;
+        
+        // Always fetch from backend first (source of truth)
+        const backendData = await verifyAttendanceStatus();
+        
+        // If backend has no attendance, check AsyncStorage as fallback
+        if (!backendData?.isCheckedIn) {
+          const saved = await AsyncStorage.getItem(storageKeys.attendance);
+          if (saved) {
+            const data = JSON.parse(saved);
+            if (data?.userId && data.userId !== userId) {
+              await clearAttendanceState();
+              return;
+            }
+            const checkInTime = new Date(data.checkInTime);
+            const dayKey = data.dayKey || getLocalDayKey(checkInTime);
+            const todayKey = getLocalDayKey();
+            if (dayKey !== todayKey) {
+              await clearAttendanceState();
+              return;
+            }
 
-        const data = JSON.parse(saved);
-        if (data?.userId && data.userId !== userId) {
-          await clearAttendanceState();
-          return;
+            setAttendanceStatus({
+              isCheckedIn: true,
+              checkInTime,
+              checkOutTime: null,
+              locationName: data.locationName,
+              elapsedTime: Date.now() - checkInTime.getTime(),
+              dayKey
+            });
+
+            // Load geofences and set current geofence
+            const gf = await loadGeofences();
+            if (data.locationId) {
+              const current = gf.find((g) => g.id === data.locationId);
+              if (current) setCurrentGeofence(current);
+            } else if (data.locationName) {
+              const current = gf.find((g) => g.name === data.locationName);
+              if (current) setCurrentGeofence(current);
+            }
+          }
         }
-        const checkInTime = new Date(data.checkInTime);
-        const dayKey = data.dayKey || getLocalDayKey(checkInTime);
-        const todayKey = getLocalDayKey();
-        if (dayKey !== todayKey) {
-          await clearAttendanceState();
-          return;
+
+        // Start location tracking if checked in
+        const currentStatus = backendData?.isCheckedIn || attendanceStatus.isCheckedIn;
+        if (currentStatus) {
+          await startLocationTracking();
         }
-
-        setAttendanceStatus({
-          isCheckedIn: true,
-          checkInTime,
-          checkOutTime: null,
-          locationName: data.locationName,
-          elapsedTime: Date.now() - checkInTime.getTime(),
-          dayKey
-        });
-
-        if (token) {
-          const gf = await loadGeofences();
-          const current = gf.find((g) => g.name === data.locationName);
-          if (current) setCurrentGeofence(current);
-        }
-
-        await startLocationTracking();
       } catch (error) {
         console.error('Error initializing location context:', error);
         if (storageKeys?.attendance) {
@@ -986,46 +1074,100 @@ export const LocationProvider = ({ children }) => {
         setWorkingHoursState({ startTime: '08:00', endTime: '16:30' });
         return;
       }
+
+      // Try to load from database first (primary source)
+      try {
+        console.log('[LocationContext] Loading preferences from database...');
+        const response = await request('/api/employees/preferences');
+        
+        if (response?.preferences) {
+          const { selectedGeofenceId: dbGeofenceId, workingHours: dbWorkingHours } = response.preferences;
+          
+          console.log('[LocationContext] Loaded preferences from database:', {
+            selectedGeofenceId: dbGeofenceId,
+            workingHours: dbWorkingHours
+          });
+
+          // Update state from database
+          if (dbGeofenceId) {
+            setSelectedGeofenceId(dbGeofenceId);
+            // Cache in AsyncStorage for offline support
+            await AsyncStorage.setItem(storageKeys.selectedGeofenceId, dbGeofenceId);
+          } else {
+            setSelectedGeofenceId(null);
+          }
+
+          if (dbWorkingHours) {
+            setWorkingHoursState(dbWorkingHours);
+            // Cache in AsyncStorage
+            if (dbGeofenceId) {
+              await AsyncStorage.setItem(storageKeys.workingHours, JSON.stringify(dbWorkingHours));
+            }
+          }
+
+          // AUTOMATIC CHECK: After loading saved geofence, load geofences and check status
+          if (dbGeofenceId) {
+            console.log('[LocationContext] AUTOMATIC: Saved geofence loaded from database, loading geofences and checking status');
+            
+            // Load geofences first, then check status
+            loadGeofences().then(async () => {
+              console.log('[LocationContext] AUTOMATIC: Geofences loaded, checking status');
+              if (isTracking && !attendanceStatus.isCheckedIn) {
+                try {
+                  const currentLoc = await getCurrentLocation();
+                  if (currentLoc && currentLoc.coords) {
+                    console.log('[LocationContext] AUTOMATIC: Got location after loading geofences, checking status now');
+                    setTimeout(() => {
+                      checkEarlyArrival(currentLoc).catch(() => {});
+                      checkGeofenceStatus(currentLoc, true);
+                    }, 300);
+                  }
+                } catch (error) {
+                  console.log('[LocationContext] AUTOMATIC: Location not available yet, will check when location updates:', error.message);
+                }
+              }
+            }).catch((error) => {
+              console.error('[LocationContext] AUTOMATIC: Failed to load geofences for automatic check', error);
+            });
+          }
+          
+          return; // Successfully loaded from database, exit early
+        }
+      } catch (error) {
+        console.warn('[LocationContext] Failed to load preferences from database, falling back to AsyncStorage:', error.message);
+        // Fall through to AsyncStorage fallback
+      }
+
+      // Fallback to AsyncStorage (for offline support or if database fails)
       const savedSelected = await AsyncStorage.getItem(storageKeys.selectedGeofenceId);
       if (savedSelected) {
-        console.log('[LocationContext] AUTOMATIC: Loaded selected geofence from storage:', savedSelected);
         setSelectedGeofenceId(savedSelected);
         
         // AUTOMATIC CHECK: After loading saved geofence, load geofences and check status
-        // This ensures automatic check-in when app starts if user is at the location
-        console.log('[LocationContext] AUTOMATIC: Saved geofence loaded, loading geofences and checking status');
-        
-        // Load geofences first, then check status
         loadGeofences().then(async () => {
-          console.log('[LocationContext] AUTOMATIC: Geofences loaded, checking status');
-          // The useEffect at line 888 will handle the check when location becomes available
-          // But we can also try to get location immediately if tracking is active
           if (isTracking && !attendanceStatus.isCheckedIn) {
             try {
               const currentLoc = await getCurrentLocation();
               if (currentLoc && currentLoc.coords) {
-                console.log('[LocationContext] AUTOMATIC: Got location after loading geofences, checking status now');
                 setTimeout(() => {
                   checkEarlyArrival(currentLoc).catch(() => {});
                   checkGeofenceStatus(currentLoc, true);
                 }, 300);
               }
-            } catch (error) {
-              console.log('[LocationContext] AUTOMATIC: Location not available yet, will check when location updates:', error.message);
+            } catch {
+              // Location will be checked when available
             }
           }
-        }).catch((error) => {
-          console.error('[LocationContext] AUTOMATIC: Failed to load geofences for automatic check', error);
-        });
+        }).catch(() => {});
       }
 
-      // Load working hours
+      // Load working hours from cache
       const savedWorkingHours = await AsyncStorage.getItem(storageKeys.workingHours);
       if (savedWorkingHours) {
         try {
           setWorkingHoursState(JSON.parse(savedWorkingHours));
         } catch (error) {
-          console.error('Error loading working hours:', error);
+          console.error('Error loading working hours from cache:', error);
         }
       }
     };
@@ -1035,24 +1177,76 @@ export const LocationProvider = ({ children }) => {
 
   useEffect(() => {
     const persistSelected = async () => {
-      if (!token || !storageKeys?.selectedGeofenceId) return;
-      if (selectedGeofenceId) {
-        await AsyncStorage.setItem(storageKeys.selectedGeofenceId, selectedGeofenceId);
-      } else {
-        await AsyncStorage.removeItem(storageKeys.selectedGeofenceId);
-        await AsyncStorage.removeItem(storageKeys.workingHours);
+      // Only persist when logged in and storageKeys are available
+      if (!token || !storageKeys?.selectedGeofenceId) {
+        // On logout: Don't remove from storage - keep it for next sign-in
+        // The selected geofence will persist in AsyncStorage even after logout
+        return;
+      }
+      
+      // Save to database (primary storage)
+      try {
+        const updateData = {};
+        
+        if (selectedGeofenceId) {
+          updateData.selectedGeofenceId = selectedGeofenceId;
+        } else if (isExplicitlyDeselectingRef.current) {
+          updateData.selectedGeofenceId = null;
+        }
+
+        // Only update if there's a change
+        if (Object.keys(updateData).length > 0) {
+          await request('/api/employees/preferences', {
+            method: 'PUT',
+            body: updateData
+          });
+        }
+
+        // Also cache in AsyncStorage for offline support
+        if (selectedGeofenceId) {
+          await AsyncStorage.setItem(storageKeys.selectedGeofenceId, selectedGeofenceId);
+          isExplicitlyDeselectingRef.current = false;
+        } else if (isExplicitlyDeselectingRef.current) {
+          // Only remove if explicitly deselecting (not on logout)
+          await AsyncStorage.removeItem(storageKeys.selectedGeofenceId);
+          await AsyncStorage.removeItem(storageKeys.workingHours);
+          isExplicitlyDeselectingRef.current = false;
+        }
+      } catch (error) {
+        console.error('[LocationContext] Failed to save preferences to database, caching locally only:', error);
+        // Fallback: still cache locally even if database save fails
+        if (selectedGeofenceId) {
+          await AsyncStorage.setItem(storageKeys.selectedGeofenceId, selectedGeofenceId);
+          isExplicitlyDeselectingRef.current = false;
+        } else if (isExplicitlyDeselectingRef.current) {
+          await AsyncStorage.removeItem(storageKeys.selectedGeofenceId);
+          await AsyncStorage.removeItem(storageKeys.workingHours);
+          isExplicitlyDeselectingRef.current = false;
+        }
       }
     };
     persistSelected();
-  }, [selectedGeofenceId, token, storageKeys]);
+  }, [selectedGeofenceId, token, storageKeys, request]);
 
   useEffect(() => {
     const persistWorkingHours = async () => {
       if (!token || !storageKeys?.workingHours || !selectedGeofenceId) return;
+      
+      // Save to database (primary storage)
+      try {
+        await request('/api/employees/preferences', {
+          method: 'PUT',
+          body: { workingHours }
+        });
+      } catch (error) {
+        console.error('[LocationContext] Failed to save working hours to database, caching locally only:', error);
+      }
+      
+      // Also cache in AsyncStorage for offline support
       await AsyncStorage.setItem(storageKeys.workingHours, JSON.stringify(workingHours));
     };
     persistWorkingHours();
-  }, [workingHours, token, storageKeys, selectedGeofenceId]);
+  }, [workingHours, token, storageKeys, selectedGeofenceId, request]);
 
   // Check geofence immediately when selectedGeofenceId changes and location is available
   // This also triggers automatically on app start if location and geofence are both available
@@ -1072,12 +1266,9 @@ export const LocationProvider = ({ children }) => {
       });
       // Small delay to ensure state is settled, but make it faster for immediate feedback
       const timer = setTimeout(() => {
-        console.log('[LocationContext] AUTOMATIC: Triggering automatic geofence check');
         // First check for early arrival (before start time) - only if not already checked in
         if (!attendanceStatus.isCheckedIn) {
-          checkEarlyArrival(location).catch((error) => {
-            console.error('[LocationContext] AUTOMATIC: Error checking early arrival', error);
-          });
+          checkEarlyArrival(location).catch(() => {});
         }
         // Then check geofence status normally (this will trigger check-in if user is inside and not checked in)
         // Use forceCheck = true to ensure check-in happens even if user is already inside
@@ -1085,29 +1276,16 @@ export const LocationProvider = ({ children }) => {
       }, 200); // Reduced delay for faster response
       return () => clearTimeout(timer);
     } else if (selectedGeofenceId && location && location.coords && isTracking && geofences.length === 0) {
-      console.log('[LocationContext] AUTOMATIC: Geofence and location available but geofences not loaded yet, loading now');
       // Load geofences first, then check
       loadGeofences().then(() => {
-        console.log('[LocationContext] AUTOMATIC: Geofences loaded, will check status');
         // The useEffect will trigger again once geofences are loaded
-      }).catch((error) => {
-        console.error('[LocationContext] AUTOMATIC: Failed to load geofences', error);
-      });
+      }).catch(() => {});
     } else if (selectedGeofenceId && !location && isTracking) {
-      console.log('[LocationContext] AUTOMATIC: Geofence selected but location not available yet, will check when location updates', {
-        selectedGeofenceId,
-        isTracking
-      });
       // Try to get location if not available
       if (isTracking) {
-        getCurrentLocation().then((currentLoc) => {
-          if (currentLoc && currentLoc.coords) {
-            console.log('[LocationContext] AUTOMATIC: Got location after geofence selection, checking status');
-            // The useEffect will trigger again with the new location
-          }
-        }).catch((error) => {
-          console.error('[LocationContext] AUTOMATIC: Failed to get location for automatic check', error);
-        });
+        getCurrentLocation().then(() => {
+          // The useEffect will trigger again with the new location
+        }).catch(() => {});
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1123,6 +1301,8 @@ export const LocationProvider = ({ children }) => {
 
   useEffect(() => {
     if (!token || !storageKeys) {
+      // On logout: Clear state but KEEP selected geofence in AsyncStorage for next sign-in
+      // Don't set isExplicitlyDeselectingRef to true, so persist effect won't remove it
       setSelectedGeofenceId(null);
       clearAttendanceState().catch(() => {});
       stopLocationTracking().catch(() => {});
@@ -1201,12 +1381,10 @@ export const LocationProvider = ({ children }) => {
 
   const setSelectedGeofence = async (geofence) => {
     const newId = geofence?.id || null;
-    console.log('[LocationContext] setSelectedGeofence', {
-      geofenceName: geofence?.name,
-      geofenceId: newId,
-      hasLocation: !!location,
-      isTracking
-    });
+    // Mark as explicit deselection if setting to null while logged in
+    if (newId === null && token) {
+      isExplicitlyDeselectingRef.current = true;
+    }
     setSelectedGeofenceId(newId);
     
     // If location is not available, try to get it
@@ -1215,7 +1393,6 @@ export const LocationProvider = ({ children }) => {
       try {
         const currentLoc = await getCurrentLocation();
         if (currentLoc && currentLoc.coords) {
-          console.log('[LocationContext] setSelectedGeofence: Got location, checking geofence status');
           setTimeout(() => {
             checkGeofenceStatus(currentLoc, true); // forceCheck = true
           }, 100);
@@ -1314,12 +1491,6 @@ export const LocationProvider = ({ children }) => {
     const isWithinEarlyArrivalWindow = currentTimeMinutes >= twoHoursBeforeStart;
 
     if (!isBeforeStartTime || !isWithinEarlyArrivalWindow) {
-      console.log('[LocationContext] checkEarlyArrival: Not in early arrival window', {
-        currentTime: `${currentHour}:${currentMinute.toString().padStart(2, '0')}`,
-        startTime: workingHours.startTime,
-        isBeforeStartTime,
-        isWithinEarlyArrivalWindow
-      });
       return;
     }
 
@@ -1339,20 +1510,10 @@ export const LocationProvider = ({ children }) => {
         const [centerLon, centerLat] = target.center;
         const distance = haversineDistanceMeters(latitude, longitude, centerLat, centerLon);
         isInside = distance <= target.radius;
-        console.log('[LocationContext] checkEarlyArrival: Circle geofence check', {
-          geofenceName: target.name,
-          distance,
-          radius: target.radius,
-          isInside
-        });
       } else if (target.coordinates && target.coordinates.length > 0) {
         const point = [longitude, latitude];
         const polygon = turfPolygon([target.coordinates]);
         isInside = booleanPointInPolygon(point, polygon);
-        console.log('[LocationContext] checkEarlyArrival: Polygon geofence check', {
-          geofenceName: target.name,
-          isInside
-        });
       }
     } catch (error) {
       console.error('[LocationContext] checkEarlyArrival: Error checking geofence', error);
@@ -1361,11 +1522,6 @@ export const LocationProvider = ({ children }) => {
 
     // If user is inside and it's before start time, check them in
     if (isInside) {
-      console.log('[LocationContext] checkEarlyArrival: User is inside geofence before start time, auto-checking in', {
-        geofenceName: target.name,
-        currentTime: `${currentHour}:${currentMinute.toString().padStart(2, '0')}`,
-        startTime: workingHours.startTime
-      });
 
       // Check cooldown to avoid multiple check-ins
       const cooldownKey = `early-arrival-checkin-${target.id}`;
@@ -1373,7 +1529,6 @@ export const LocationProvider = ({ children }) => {
       const now = Date.now();
       
       if (last && now - last < 300000) { // 5 minutes cooldown
-        console.log('[LocationContext] checkEarlyArrival: Cooldown active, skipping');
         return;
       }
 
@@ -1429,12 +1584,9 @@ export const LocationProvider = ({ children }) => {
         });
 
         geofenceCooldownRef.current.set(cooldownKey, now);
-        console.log('[LocationContext] checkEarlyArrival: Successfully checked in early arrival');
       } catch (error) {
         console.error('[LocationContext] checkEarlyArrival: Failed to check in early arrival', error);
       }
-    } else {
-      console.log('[LocationContext] checkEarlyArrival: User is not inside geofence yet');
     }
   }, [selectedGeofenceId, geofences, workingHours, attendanceStatus.isCheckedIn, request, storageKeys, userId]);
 

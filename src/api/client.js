@@ -48,8 +48,19 @@ export const createApiClient = ({
 
     try {
       const requestUrl = buildUrl(apiUrl, path);
+      
+      // Prepare request body - stringify if it's an object and Content-Type is JSON
+      let requestBody = options.body;
+      if (requestBody && typeof requestBody === 'object' && !(requestBody instanceof FormData) && !(requestBody instanceof Blob)) {
+        // Only stringify if Content-Type is JSON (default)
+        if (headers['Content-Type']?.includes('application/json')) {
+          requestBody = JSON.stringify(requestBody);
+        }
+      }
+      
       const response = await fetch(requestUrl, {
         ...options,
+        body: requestBody,
         headers,
         signal: controller.signal
       });

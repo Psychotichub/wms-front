@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable, Alert, ScrollView, Animated, Platform } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useLocation } from '../context/LocationContext';
 import { useThemeTokens } from '../theme/ThemeProvider';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
-import GeofenceMap from '../components/GeofenceMap';
 import EmptyState from '../components/ui/EmptyState';
 
 const AttendanceStatusScreen = ({ navigation }) => {
@@ -12,16 +12,15 @@ const AttendanceStatusScreen = ({ navigation }) => {
     attendanceStatus,
     currentGeofence,
     selectedGeofence,
-    location,
     loadGeofences,
     manualCheckOut,
     startLocationTracking,
-    stopLocationTracking
+    stopLocationTracking,
+    verifyAttendanceStatus
   } = useLocation();
 
   const t = useThemeTokens();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [currentGeofenceData, setCurrentGeofenceData] = useState(null);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -32,22 +31,15 @@ const AttendanceStatusScreen = ({ navigation }) => {
   // Explicitly set to false on web to prevent warnings
   const USE_NATIVE_DRIVER = Platform.OS === 'ios' || Platform.OS === 'android';
 
-  // Load geofence data for current location or selected geofence
-  useEffect(() => {
-    const loadCurrentGeofenceData = async () => {
-      const geofenceToLoad = currentGeofence || selectedGeofence;
-      if (geofenceToLoad) {
-        const geofences = await loadGeofences();
-        const currentData = geofences?.find(g => g.id === geofenceToLoad.id);
-        setCurrentGeofenceData(currentData);
-      } else {
-        setCurrentGeofenceData(null);
-      }
-    };
+  // Verify attendance status when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      verifyAttendanceStatus().catch(() => {
+        // Silently handle errors
+      });
+    }, [verifyAttendanceStatus])
+  );
 
-    loadCurrentGeofenceData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentGeofence, selectedGeofence]);
 
   // Entrance animations
   useEffect(() => {
@@ -94,9 +86,10 @@ const AttendanceStatusScreen = ({ navigation }) => {
   };
 
   const handleCheckOut = async () => {
+    const locationName = getDisplayGeofenceName();
     Alert.alert(
       'Check Out',
-      `Are you sure you want to check out from ${getDisplayGeofenceName()}?`,
+      `Are you sure you want to check out from "${locationName}"?\n\nThis will end your current attendance session, even if you are still at the location.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -104,11 +97,15 @@ const AttendanceStatusScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
+              console.log('[AttendanceStatusScreen] Starting manual checkout...');
               await manualCheckOut();
+              console.log('[AttendanceStatusScreen] Manual checkout successful');
               Alert.alert('Success', 'Successfully checked out');
               navigation.goBack();
-            } catch (_error) {
-              Alert.alert('Error', 'Failed to check out. Please try again.');
+            } catch (error) {
+              console.error('[AttendanceStatusScreen] Manual checkout failed:', error);
+              const errorMessage = error?.message || 'Failed to check out. Please try again.';
+              Alert.alert('Error', errorMessage);
             }
           }
         }
@@ -135,33 +132,6 @@ const AttendanceStatusScreen = ({ navigation }) => {
     }
   };
 
-  const getMapRegion = () => {
-    if (location) {
-      return {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
-      };
-    }
-
-    if (currentGeofenceData?.coordinates?.length > 0) {
-      const coords = currentGeofenceData.coordinates[0];
-      return {
-        latitude: coords[1],
-        longitude: coords[0],
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      };
-    }
-
-    return {
-      latitude: 0,
-      longitude: 0,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    };
-  };
 
   const formatElapsedTime = (milliseconds) => {
     if (!milliseconds) return '00:00:00';
@@ -332,23 +302,6 @@ const AttendanceStatusScreen = ({ navigation }) => {
             </View>
           </Animated.View>
 
-          {/* Map Preview */}
-          <View style={[styles.mapCard, { backgroundColor: t.colors.card }]}>
-            <Text style={[styles.mapTitle, { color: t.colors.text }]}>
-              Location Preview
-            </Text>
-
-            <View style={styles.mapContainer}>
-              <GeofenceMap
-                style={styles.map}
-                region={getMapRegion()}
-                location={location}
-                geofenceData={currentGeofenceData}
-                geofenceName={displayGeofenceName}
-              />
-            </View>
-          </View>
-
           {/* Quick Actions */}
           <View style={[styles.actionsCard, { backgroundColor: t.colors.card }]}>
             <Text style={[styles.actionsTitle, { color: t.colors.text }]}>
@@ -498,35 +451,6 @@ const styles = StyleSheet.create({
   },
   dateLabel: {
     fontSize: 12,
-  },
-  mapCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 20,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
-  },
-  mapTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-    color: '#1f2937',
-  },
-  mapContainer: {
-    height: 200,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  map: {
-    width: '100%',
-    height: '100%',
   },
   actionsCard: {
     marginHorizontal: 16,

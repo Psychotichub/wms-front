@@ -28,6 +28,7 @@
     "@vis.gl/react-google-maps": "^1.7.1",
     "eas": "^0.1.0",
     "expo": "~54.0.32",
+    "expo-build-properties": "~1.0.10",
     "expo-constants": "~18.0.13",
     "expo-dev-client": "~6.0.20",
     "expo-device": "~8.0.10",

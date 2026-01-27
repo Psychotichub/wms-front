@@ -50,6 +50,17 @@ module.exports = {
           isIosBackgroundLocationEnabled: true,
           isAndroidBackgroundLocationEnabled: true
         }
+      ],
+      // Add expo-build-properties plugin to inject Google Maps API key
+      [
+        'expo-build-properties',
+        {
+          android: {
+            manifestPlaceholders: {
+              googleMapsApiKey: googleMapsApiKey || ''
+            }
+          }
+        }
       ]
     ],
     ios: {
@@ -75,11 +86,15 @@ module.exports = {
         'ACCESS_BACKGROUND_LOCATION',
         'FOREGROUND_SERVICE',
         'FOREGROUND_SERVICE_LOCATION'
-      ]
-    },
-    // Note: native config is managed directly in the android/ios folders.
-    // When native folders exist, EAS Build won't sync plugins/ios/android from this file.
-    // This is expected behavior - we manage native code manually for custom configurations.
+      ],
+      // Add Google Maps API key configuration
+      config: {
+        googleMaps: {
+          apiKey: googleMapsApiKey || ''
+        }
+      }
+    }
+    // Note: With expo-build-properties plugin, Google Maps API key will be automatically
+    // injected into AndroidManifest.xml during EAS Build, so no manual native file editing needed.
   }
 };
-

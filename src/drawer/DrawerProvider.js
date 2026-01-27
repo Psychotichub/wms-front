@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Animated, Dimensions, Image, Modal, Platform, Pressable, Text, View } from 'react-native';
+import { Animated, Dimensions, Image, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -56,23 +56,29 @@ const DrawerContent = ({ onItemPress }) => {
         <Text style={[styles.drawerTitle, { color: t.colors.text }]}>Menu</Text>
       </View>
 
-      {finalDrawerItems.map((item) => (
-        <Pressable
-          key={item.label}
-          style={[styles.drawerItem, { borderBottomColor: t.colors.border }]}
-          onPress={() => handleItemPress(item)}
-        >
-          <Ionicons name={item.icon} size={24} color={t.colors.text} style={styles.drawerItemIcon} />
-          <Text style={[styles.drawerItemLabel, { color: t.colors.text }]}>{item.label}</Text>
-          {item.badge > 0 && (
-            <View style={[styles.drawerBadge, { backgroundColor: t.colors.primary }]}>
-              <Text style={[styles.drawerBadgeText, { color: '#fff' }]}>
-                {item.badge > 99 ? '99+' : item.badge}
-              </Text>
-            </View>
-          )}
-        </Pressable>
-      ))}
+      <ScrollView 
+        style={styles.drawerScrollView}
+        contentContainerStyle={styles.drawerScrollContent}
+        showsVerticalScrollIndicator={true}
+      >
+        {finalDrawerItems.map((item) => (
+          <Pressable
+            key={item.label}
+            style={[styles.drawerItem, { borderBottomColor: t.colors.border }]}
+            onPress={() => handleItemPress(item)}
+          >
+            <Ionicons name={item.icon} size={24} color={t.colors.text} style={styles.drawerItemIcon} />
+            <Text style={[styles.drawerItemLabel, { color: t.colors.text }]}>{item.label}</Text>
+            {item.badge > 0 && (
+              <View style={[styles.drawerBadge, { backgroundColor: t.colors.primary }]}>
+                <Text style={[styles.drawerBadgeText, { color: '#fff' }]}>
+                  {item.badge > 99 ? '99+' : item.badge}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        ))}
+      </ScrollView>
     </View>
   );
 };

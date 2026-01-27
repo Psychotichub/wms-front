@@ -144,6 +144,14 @@ const EmployeeScreen = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState('');
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [geofences, setGeofences] = useState([]);
+  const [loadingGeofences, setLoadingGeofences] = useState(false);
+  const [employeePreferences, setEmployeePreferences] = useState({
+    selectedGeofenceId: null,
+    workingHours: { startTime: '08:00', endTime: '16:30' }
+  });
+  const [loadingPreferences, setLoadingPreferences] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -176,6 +184,57 @@ const EmployeeScreen = () => {
     }
   }, [request]);
 
+  const loadGeofences = useCallback(async () => {
+    setLoadingGeofences(true);
+    try {
+      const data = await request('/api/locations/geofences');
+      setGeofences(data.geofences || []);
+    } catch (error) {
+      console.error('Failed to load geofences:', error);
+    } finally {
+      setLoadingGeofences(false);
+    }
+  }, [request]);
+
+  const loadEmployeePreferences = useCallback(async (employeeId) => {
+    if (!employeeId) return;
+    setLoadingPreferences(true);
+    try {
+      const data = await request(`/api/employees/${employeeId}/preferences`);
+      if (data?.preferences) {
+        setEmployeePreferences({
+          selectedGeofenceId: data.preferences.selectedGeofenceId || null,
+          workingHours: data.preferences.workingHours || { startTime: '08:00', endTime: '16:30' }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load employee preferences:', error);
+      // Set defaults if failed
+      setEmployeePreferences({
+        selectedGeofenceId: null,
+        workingHours: { startTime: '08:00', endTime: '16:30' }
+      });
+    } finally {
+      setLoadingPreferences(false);
+    }
+  }, [request]);
+
+  const saveEmployeePreferences = useCallback(async (employeeId) => {
+    if (!employeeId) return;
+    try {
+      await request(`/api/employees/${employeeId}/preferences`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          selectedGeofenceId: employeePreferences.selectedGeofenceId,
+          workingHours: employeePreferences.workingHours
+        })
+      });
+      setMessage('Employee preferences updated successfully');
+    } catch (error) {
+      setMessage(error.message || 'Failed to update employee preferences');
+    }
+  }, [request, employeePreferences]);
+
   useFocusEffect(
     useCallback(() => {
       loadEmployees();
@@ -205,6 +264,11 @@ const EmployeeScreen = () => {
     });
     setEditingId(null);
     setShowForm(false);
+    setShowPreferences(false);
+    setEmployeePreferences({
+      selectedGeofenceId: null,
+      workingHours: { startTime: '08:00', endTime: '16:30' }
+    });
   };
 
   const handleSubmit = async () => {
@@ -241,7 +305,7 @@ const EmployeeScreen = () => {
     }
   };
 
-  const handleEdit = useCallback((employee) => {
+  const handleEdit = useCallback(async (employee) => {
     setFormData({
       name: employee.name || '',
       email: employee.email || '',
@@ -254,7 +318,12 @@ const EmployeeScreen = () => {
     });
     setEditingId(employee._id);
     setShowForm(true);
-  }, []);
+    setShowPreferences(false);
+    
+    // Load geofences and employee preferences when editing
+    await loadGeofences();
+    await loadEmployeePreferences(employee._id);
+  }, [loadGeofences, loadEmployeePreferences]);
 
   const handleDelete = useCallback(async (id) => {
     Alert.alert(
@@ -404,6 +473,127 @@ const EmployeeScreen = () => {
               <Text style={[styles.helperText, { color: t.colors.textSecondary }]}>
                 If password is provided, a user account will be created so the employee can log in and receive tasks.
               </Text>
+            )}
+
+            {editingId && (
+              <>
+                <Pressable
+                  style={[styles.preferencesToggle, { borderColor: t.colors.border, backgroundColor: t.colors.card }]}
+                  onPress={() => setShowPreferences(!showPreferences)}
+                >
+                  <View style={styles.preferencesToggleHeader}>
+                    <Ionicons 
+                      name={showPreferences ? "chevron-down" : "chevron-forward"} 
+                      size={20} 
+                      color={t.colors.textSecondary} 
+                    />
+                    <Text style={[styles.preferencesToggleText, { color: t.colors.text }]}>
+                      Location & Working Hours Preferences
+                    </Text>
+                  </View>
+                </Pressable>
+
+                {showPreferences && (
+                  <View style={[styles.preferencesSection, { backgroundColor: getRGBA(t.colors.card, 0.3) }]}>
+                    {loadingPreferences ? (
+                      <Text style={[styles.helperText, { color: t.colors.textSecondary }]}>Loading preferences...</Text>
+                    ) : (
+                      <>
+                        <Text style={[styles.label, { color: t.colors.textSecondary, marginTop: 0 }]}>
+                          Default Location
+                        </Text>
+                        {loadingGeofences ? (
+                          <Text style={[styles.helperText, { color: t.colors.textSecondary }]}>Loading locations...</Text>
+                        ) : (
+                          <View style={styles.locationSelect}>
+                            {geofences.map((geofence) => (
+                              <Pressable
+                                key={geofence.id}
+                                style={[
+                                  styles.locationChip,
+                                  { borderColor: t.colors.border, backgroundColor: t.colors.card },
+                                  employeePreferences.selectedGeofenceId === geofence.id && {
+                                    borderColor: t.colors.primary,
+                                    backgroundColor: getRGBA(t.colors.primary, 0.1)
+                                  }
+                                ]}
+                                onPress={() => setEmployeePreferences({
+                                  ...employeePreferences,
+                                  selectedGeofenceId: employeePreferences.selectedGeofenceId === geofence.id ? null : geofence.id
+                                })}
+                              >
+                                <Text
+                                  style={[
+                                    styles.locationChipText,
+                                    { color: t.colors.text },
+                                    employeePreferences.selectedGeofenceId === geofence.id && {
+                                      color: t.colors.primary,
+                                      fontWeight: '700'
+                                    }
+                                  ]}
+                                >
+                                  {geofence.name}
+                                </Text>
+                                {employeePreferences.selectedGeofenceId === geofence.id && (
+                                  <Ionicons name="checkmark-circle" size={16} color={t.colors.primary} style={{ marginLeft: 4 }} />
+                                )}
+                              </Pressable>
+                            ))}
+                            {geofences.length === 0 && (
+                              <Text style={[styles.helperText, { color: t.colors.textSecondary }]}>
+                                No locations available. Create locations in Manage Locations.
+                              </Text>
+                            )}
+                          </View>
+                        )}
+
+                        <Text style={[styles.label, { color: t.colors.textSecondary, marginTop: 16 }]}>
+                          Working Hours
+                        </Text>
+                        <View style={styles.workingHoursRow}>
+                          <View style={styles.timeInputContainer}>
+                            <Text style={[styles.timeLabel, { color: t.colors.textSecondary }]}>Start Time</Text>
+                            <TextInput
+                              style={[styles.timeInput, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                              placeholder="08:00"
+                              value={employeePreferences.workingHours.startTime}
+                              onChangeText={(text) => setEmployeePreferences({
+                                ...employeePreferences,
+                                workingHours: { ...employeePreferences.workingHours, startTime: text }
+                              })}
+                              placeholderTextColor={t.colors.textSecondary}
+                            />
+                          </View>
+                          <View style={styles.timeInputContainer}>
+                            <Text style={[styles.timeLabel, { color: t.colors.textSecondary }]}>End Time</Text>
+                            <TextInput
+                              style={[styles.timeInput, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                              placeholder="16:30"
+                              value={employeePreferences.workingHours.endTime}
+                              onChangeText={(text) => setEmployeePreferences({
+                                ...employeePreferences,
+                                workingHours: { ...employeePreferences.workingHours, endTime: text }
+                              })}
+                              placeholderTextColor={t.colors.textSecondary}
+                            />
+                          </View>
+                        </View>
+                        <Text style={[styles.helperText, { color: t.colors.textSecondary }]}>
+                          Format: HH:MM (e.g., 08:00, 16:30)
+                        </Text>
+
+                        <View style={styles.preferencesActions}>
+                          <Button 
+                            title="Save Preferences" 
+                            onPress={() => saveEmployeePreferences(editingId)} 
+                            variant="secondary"
+                          />
+                        </View>
+                      </>
+                    )}
+                  </View>
+                )}
+              </>
             )}
 
             <View style={styles.formActions}>
@@ -621,6 +811,71 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 16,
     fontWeight: '600'
+  },
+  preferencesToggle: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+    marginBottom: 12
+  },
+  preferencesToggleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  preferencesToggleText: {
+    fontSize: 16,
+    fontWeight: '600'
+  },
+  preferencesSection: {
+    borderRadius: 8,
+    padding: 16,
+    marginTop: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)'
+  },
+  locationSelect: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12
+  },
+  locationChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    minWidth: 100
+  },
+  locationChipText: {
+    fontSize: 14,
+    fontWeight: '500'
+  },
+  workingHoursRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 8
+  },
+  timeInputContainer: {
+    flex: 1
+  },
+  timeLabel: {
+    fontSize: 12,
+    marginBottom: 4,
+    fontWeight: '500'
+  },
+  timeInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16
+  },
+  preferencesActions: {
+    marginTop: 16
   }
 });
 

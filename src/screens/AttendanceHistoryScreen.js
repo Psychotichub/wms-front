@@ -79,7 +79,7 @@ const AttendanceItem = React.memo(({ item, colors }) => (
 
     <View style={styles.itemFooter}>
       <Text style={[styles.locationText, { color: colors.textSecondary }]}>
-        📍 {item.location?.locationName || 'Unknown Location'}
+        📍 {item.location?.locationName || item.location?.name || 'Unknown Location'}
       </Text>
       <Text style={[styles.durationText, { color: colors.primary }]}>
         ⏱️ {formatDuration(item.totalHours)}
@@ -158,7 +158,7 @@ const AttendanceHistoryScreen = ({ navigation }) => {
       setFilteredHistory(records);
 
       // Extract unique locations for filter
-      const locations = [...new Set(records.map(record => record.location?.locationName).filter(Boolean))];
+      const locations = [...new Set(records.map(record => record.location?.locationName || record.location?.name).filter(Boolean))];
       setAvailableLocations(locations);
 
       // Calculate stats
@@ -232,7 +232,7 @@ const AttendanceHistoryScreen = ({ navigation }) => {
           record.clockInTime ? new Date(record.clockInTime).toLocaleTimeString() : 'N/A',
           record.clockOutTime ? new Date(record.clockOutTime).toLocaleTimeString() : 'N/A',
           record.totalHours?.toFixed(2) || '0.00',
-          `"${record.location?.locationName || 'Unknown'}"`,
+          `"${record.location?.locationName || record.location?.name || 'Unknown'}"`,
           record.location?.geofenceTriggered ? 'Yes' : 'No'
         ].join(','))
       ].join('\n');
