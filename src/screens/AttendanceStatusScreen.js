@@ -209,6 +209,49 @@ const AttendanceStatusScreen = ({ navigation }) => {
       
       // Only show checkout message if checkout was today (in UTC)
       if (checkOutDateUTC.getTime() === today.getTime()) {
+        // If manual checkout, show cooldown message
+        if (attendanceStatus.isManualCheckout && attendanceStatus.nextCheckInTime) {
+          const nextCheckInTime = new Date(attendanceStatus.nextCheckInTime);
+          const now = new Date();
+          const canCheckIn = now >= nextCheckInTime;
+          
+          return (
+            <Screen>
+              <View style={[styles.container, { backgroundColor: t.colors.background }]}>
+                <View style={[styles.header, { backgroundColor: t.colors.card, borderBottomColor: t.colors.border }]}>
+                  <Pressable
+                    style={styles.backButton}
+                    onPress={() => navigation.goBack()}
+                  >
+                    <Ionicons name="arrow-back" size={24} color={t.colors.text} />
+                  </Pressable>
+                  <Text style={[styles.headerTitle, { color: t.colors.text }]}>Attendance Status</Text>
+                  <View style={styles.headerRight} />
+                </View>
+
+                <View style={styles.notCheckedInContainer}>
+                  <EmptyState
+                    icon="time-outline"
+                    title="Cannot Check In"
+                    subtitle={canCheckIn 
+                      ? `You can check in now. You checked out at ${formatTime(attendanceStatus.checkOutTime)}.`
+                      : `You cannot check in until ${formatTime(attendanceStatus.nextCheckInTime)}`}
+                  />
+                  <View style={styles.infoMessage}>
+                    <Ionicons name="information-circle-outline" size={20} color={t.colors.textSecondary} />
+                    <Text style={[styles.infoText, { color: t.colors.textSecondary }]}>
+                      {canCheckIn 
+                        ? 'The 6-hour cooldown period has passed. You can check in again.'
+                        : `You manually checked out at ${formatTime(attendanceStatus.checkOutTime)}. There is a 6-hour cooldown period before you can check in again.`}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </Screen>
+          );
+        }
+        
+        // Automatic checkout - show default message
         return (
           <Screen>
             <View style={[styles.container, { backgroundColor: t.colors.background }]}>

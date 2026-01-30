@@ -63,8 +63,10 @@ export const LocationProvider = ({ children }) => {
   const [attendanceStatus, setAttendanceStatus] = useState({
     isCheckedIn: false,
     isCheckedOut: false,
+    isManualCheckout: false,
     checkInTime: null,
     checkOutTime: null,
+    nextCheckInTime: null,
     locationName: null,
     elapsedTime: 0,
     dayKey: null
@@ -788,13 +790,19 @@ export const LocationProvider = ({ children }) => {
       throw error;
     }
 
-    setAttendanceStatus((prev) => ({
-      ...prev,
-      isCheckedIn: false,
-      isCheckedOut: true,
-      checkOutTime: new Date(),
-      dayKey: null
-    }));
+    setAttendanceStatus((prev) => {
+      const checkoutTime = new Date();
+      const nextCheckInTime = new Date(checkoutTime.getTime() + (6 * 60 * 60 * 1000)); // 6 hours from checkout
+      return {
+        ...prev,
+        isCheckedIn: false,
+        isCheckedOut: true,
+        isManualCheckout: true,
+        checkOutTime: checkoutTime,
+        nextCheckInTime: nextCheckInTime,
+        dayKey: null
+      };
+    });
 
     if (storageKeys?.attendance) {
       await AsyncStorage.removeItem(storageKeys.attendance);
@@ -860,8 +868,10 @@ export const LocationProvider = ({ children }) => {
     setAttendanceStatus({
       isCheckedIn: false,
       isCheckedOut: false,
+      isManualCheckout: false,
       checkInTime: null,
       checkOutTime: null,
+      nextCheckInTime: null,
       locationName: null,
       elapsedTime: 0,
       dayKey: null
@@ -1038,11 +1048,14 @@ export const LocationProvider = ({ children }) => {
           
           if (checkOutDateUTC.getTime() === today.getTime()) {
             // User checked out today
+            const nextCheckInTime = data.nextCheckInTime ? new Date(data.nextCheckInTime) : null;
             setAttendanceStatus({
               isCheckedIn: false,
               isCheckedOut: true,
+              isManualCheckout: data.isManualCheckout || false,
               checkInTime: null,
               checkOutTime: checkOutTime,
+              nextCheckInTime: nextCheckInTime,
               locationName: null,
               elapsedTime: 0,
               dayKey: null
@@ -1052,8 +1065,10 @@ export const LocationProvider = ({ children }) => {
             setAttendanceStatus({
               isCheckedIn: false,
               isCheckedOut: false,
+              isManualCheckout: false,
               checkInTime: null,
               checkOutTime: null,
+              nextCheckInTime: null,
               locationName: null,
               elapsedTime: 0,
               dayKey: null
@@ -1064,8 +1079,10 @@ export const LocationProvider = ({ children }) => {
           setAttendanceStatus({
             isCheckedIn: false,
             isCheckedOut: false,
+            isManualCheckout: false,
             checkInTime: null,
             checkOutTime: null,
+            nextCheckInTime: null,
             locationName: null,
             elapsedTime: 0,
             dayKey: null
