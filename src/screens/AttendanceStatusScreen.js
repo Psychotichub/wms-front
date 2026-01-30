@@ -193,6 +193,55 @@ const AttendanceStatusScreen = ({ navigation }) => {
   // If checked in but currentGeofence is null, we'll use attendanceStatus.locationName
   if (!attendanceStatus.isCheckedIn) {
     const hasSelectedLocation = !!selectedGeofence;
+    
+    // If user is checked out, show checkout message (only for today)
+    if (attendanceStatus.isCheckedOut && attendanceStatus.checkOutTime) {
+      // Use UTC for consistent date comparison
+      const now = new Date();
+      const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+      const checkOutDate = new Date(attendanceStatus.checkOutTime);
+      const checkOutDateUTC = new Date(Date.UTC(
+        checkOutDate.getUTCFullYear(),
+        checkOutDate.getUTCMonth(),
+        checkOutDate.getUTCDate(),
+        0, 0, 0, 0
+      ));
+      
+      // Only show checkout message if checkout was today (in UTC)
+      if (checkOutDateUTC.getTime() === today.getTime()) {
+        return (
+          <Screen>
+            <View style={[styles.container, { backgroundColor: t.colors.background }]}>
+              <View style={[styles.header, { backgroundColor: t.colors.card, borderBottomColor: t.colors.border }]}>
+                <Pressable
+                  style={styles.backButton}
+                  onPress={() => navigation.goBack()}
+                >
+                  <Ionicons name="arrow-back" size={24} color={t.colors.text} />
+                </Pressable>
+                <Text style={[styles.headerTitle, { color: t.colors.text }]}>Attendance Status</Text>
+                <View style={styles.headerRight} />
+              </View>
+
+              <View style={styles.notCheckedInContainer}>
+                <EmptyState
+                  icon="log-out-outline"
+                  title="Already Checked Out"
+                  subtitle={`You already checked out at ${formatTime(attendanceStatus.checkOutTime)}`}
+                />
+                <View style={styles.infoMessage}>
+                  <Ionicons name="information-circle-outline" size={20} color={t.colors.textSecondary} />
+                  <Text style={[styles.infoText, { color: t.colors.textSecondary }]}>
+                    You can check in again tomorrow. The status will reset after midnight.
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </Screen>
+        );
+      }
+    }
+    
     return (
       <Screen>
         <View style={[styles.container, { backgroundColor: t.colors.background }]}>

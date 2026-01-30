@@ -62,6 +62,7 @@ export const LocationProvider = ({ children }) => {
 
   const [attendanceStatus, setAttendanceStatus] = useState({
     isCheckedIn: false,
+    isCheckedOut: false,
     checkInTime: null,
     checkOutTime: null,
     locationName: null,
@@ -577,6 +578,7 @@ export const LocationProvider = ({ children }) => {
         if (currentStatus.currentAttendance) {
           setAttendanceStatus({
             isCheckedIn: true,
+            isCheckedOut: false,
             checkInTime: new Date(currentStatus.currentAttendance.checkInTime),
             checkOutTime: null,
             locationName: currentStatus.currentAttendance.location?.locationName || geofence.name,
@@ -625,6 +627,7 @@ export const LocationProvider = ({ children }) => {
 
       setAttendanceStatus({
         isCheckedIn: true,
+        isCheckedOut: false,
         checkInTime: new Date(),
         checkOutTime: null,
         locationName: geofence.name,
@@ -668,6 +671,7 @@ export const LocationProvider = ({ children }) => {
           const attendance = errorData.attendance;
           setAttendanceStatus({
             isCheckedIn: true,
+            isCheckedOut: false,
             checkInTime: new Date(attendance.clockInTime),
             checkOutTime: null,
             locationName: attendance.location?.locationName || geofence.name,
@@ -702,6 +706,7 @@ export const LocationProvider = ({ children }) => {
           if (currentStatus?.isCheckedIn && currentStatus.currentAttendance) {
             setAttendanceStatus({
               isCheckedIn: true,
+              isCheckedOut: false,
               checkInTime: new Date(currentStatus.currentAttendance.checkInTime),
               checkOutTime: null,
               locationName: currentStatus.currentAttendance.location?.locationName || geofence.name,
@@ -786,6 +791,7 @@ export const LocationProvider = ({ children }) => {
     setAttendanceStatus((prev) => ({
       ...prev,
       isCheckedIn: false,
+      isCheckedOut: true,
       checkOutTime: new Date(),
       dayKey: null
     }));
@@ -853,6 +859,7 @@ export const LocationProvider = ({ children }) => {
   const clearAttendanceState = useCallback(async () => {
     setAttendanceStatus({
       isCheckedIn: false,
+      isCheckedOut: false,
       checkInTime: null,
       checkOutTime: null,
       locationName: null,
@@ -970,6 +977,7 @@ export const LocationProvider = ({ children }) => {
         // Update state if checked in
         setAttendanceStatus({
           isCheckedIn: true,
+          isCheckedOut: false,
           checkInTime,
           checkOutTime: null,
           locationName,
@@ -1015,15 +1023,54 @@ export const LocationProvider = ({ children }) => {
         // Clear state if not checked in but frontend thinks we are
         await clearAttendanceState();
       } else if (!data.isCheckedIn) {
-        // Ensure state is cleared if not checked in
-        setAttendanceStatus({
-          isCheckedIn: false,
-          checkInTime: null,
-          checkOutTime: null,
-          locationName: null,
-          elapsedTime: 0,
-          dayKey: null
-        });
+        // Check if user is checked out (only for today)
+        if (data.isCheckedOut && data.checkOutTime) {
+          const checkOutTime = new Date(data.checkOutTime);
+          // Only show checkout status if it's from today (use UTC for consistency)
+          const now = new Date();
+          const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+          const checkOutDateUTC = new Date(Date.UTC(
+            checkOutTime.getUTCFullYear(),
+            checkOutTime.getUTCMonth(),
+            checkOutTime.getUTCDate(),
+            0, 0, 0, 0
+          ));
+          
+          if (checkOutDateUTC.getTime() === today.getTime()) {
+            // User checked out today
+            setAttendanceStatus({
+              isCheckedIn: false,
+              isCheckedOut: true,
+              checkInTime: null,
+              checkOutTime: checkOutTime,
+              locationName: null,
+              elapsedTime: 0,
+              dayKey: null
+            });
+          } else {
+            // Checkout was from a previous day, reset status
+            setAttendanceStatus({
+              isCheckedIn: false,
+              isCheckedOut: false,
+              checkInTime: null,
+              checkOutTime: null,
+              locationName: null,
+              elapsedTime: 0,
+              dayKey: null
+            });
+          }
+        } else {
+          // Ensure state is cleared if not checked in
+          setAttendanceStatus({
+            isCheckedIn: false,
+            isCheckedOut: false,
+            checkInTime: null,
+            checkOutTime: null,
+            locationName: null,
+            elapsedTime: 0,
+            dayKey: null
+          });
+        }
         if (currentGeofence) setCurrentGeofence(null);
       }
       
@@ -1064,6 +1111,7 @@ export const LocationProvider = ({ children }) => {
 
             setAttendanceStatus({
               isCheckedIn: true,
+              isCheckedOut: false,
               checkInTime,
               checkOutTime: null,
               locationName: data.locationName,
@@ -1591,6 +1639,7 @@ export const LocationProvider = ({ children }) => {
 
         setAttendanceStatus({
           isCheckedIn: true,
+          isCheckedOut: false,
           checkInTime: new Date(),
           checkOutTime: null,
           locationName: target.name,

@@ -5,7 +5,7 @@ const API_BASE = env.requireApiUrlEnv();
 
 const payload = {
   name: 'suresh',
-  email: 'suresh.pokhrel243@gmail.com',
+  email: '4psychotic@gmail.com',
   password: '787223',
   company: 'Sion',
   site: 'Arsi',
