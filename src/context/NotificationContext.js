@@ -170,10 +170,12 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  // Load notifications
+  // Load notifications (includes pending notifications from when user was offline)
   const loadNotifications = async (page = 1, limit = 20) => {
     if (!isAuthReady || !token) return;
     try {
+      // Fetch all notifications including pending ones (no status filter)
+      // Backend will automatically mark pending notifications as delivered when fetched
       const response = await request(
         `/api/notifications?page=${page}&limit=${limit}`,
         { __suppress401Log: true }

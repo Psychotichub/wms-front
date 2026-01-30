@@ -808,15 +808,6 @@ export const LocationProvider = ({ children }) => {
       await AsyncStorage.removeItem(storageKeys.attendance);
     }
 
-    try {
-      await request('/api/time/stop', {
-        method: 'POST',
-        body: { notes: 'Auto-stopped due to check-out' }
-      });
-    } catch {
-      // ignore if no active time entry
-    }
-
     await notifyGeofenceEvent({
       key: `left:${geofence?.id || 'manual'}`,
       title: 'Left',

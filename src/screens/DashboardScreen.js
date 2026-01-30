@@ -495,13 +495,6 @@ const DashboardScreen = ({ navigation }) => {
         <View style={styles.actionRow}>
           <Pressable
             style={[styles.actionCard, shadow, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}
-            onPress={() => navigation.navigate('Time Tracking')}
-          >
-            <Ionicons name="time-outline" size={20} color={t.colors.info} />
-            <Text style={[styles.actionText, { color: t.colors.text }]}>Time Tracking</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.actionCard, shadow, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}
             onPress={() => navigation.navigate('Setting')}
           >
             <Ionicons name="settings-outline" size={20} color={t.colors.primary} />

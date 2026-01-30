@@ -35,8 +35,7 @@ export const navigateFromNotification = (notification) => {
 
       case 'time_approved':
       case 'time_rejected':
-        // Navigate to Time Tracking screen
-        navigation.navigate('Time Tracking');
+        // Time tracking removed - stay on notifications screen
         break;
 
       case 'daily_report_missing':
@@ -63,8 +62,6 @@ export const navigateFromNotification = (notification) => {
         // For general notifications, check if there's a specific action in data
         if (data?.action === 'view_tasks') {
           navigation.navigate('My Tasks');
-        } else if (data?.action === 'view_time') {
-          navigation.navigate('Time Tracking');
         } else if (data?.action === 'view_report') {
           navigation.navigate('Daily Report');
         } else if (data?.action === 'view_inventory') {

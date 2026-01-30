@@ -70,11 +70,6 @@ export const appScreenConfig = [
     getComponent: () => require('../screens/TaskDetailScreen').default
   },
   {
-    name: 'Time Tracking',
-    getComponent: () => require('../screens/TimeTrackingScreen').default,
-    drawer: { label: 'Time Tracking', icon: 'time-outline' }
-  },
-  {
     name: 'Notifications',
     getComponent: () => require('../screens/NotificationsScreen').default
   },
