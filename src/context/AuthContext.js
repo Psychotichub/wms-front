@@ -122,10 +122,28 @@ export const AuthProvider = ({ children }) => {
         }
 
         if (storedToken && storedUser) {
+          // Load verified user with token
+          const parsedUser = JSON.parse(storedUser);
+          // Ensure isEmailVerified is set - if user has token, they should be verified
+          // But preserve the stored value if it exists
+          const userData = {
+            ...parsedUser,
+            isEmailVerified: parsedUser?.isEmailVerified ?? true // Default to true if token exists
+          };
           setToken(storedToken);
-          setUser(JSON.parse(storedUser));
+          setUser(userData);
           if (isDev) {
-            console.log('✅ Loaded token and user from storage');
+            console.log('✅ Loaded token and user from storage:', {
+              hasToken: !!storedToken,
+              isEmailVerified: userData.isEmailVerified
+            });
+          }
+        } else if (storedUser) {
+          // Load unverified user (no token) - for email verification flow
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          if (isDev) {
+            console.log('✅ Loaded unverified user from storage (awaiting email verification)');
           }
         } else if (isDev) {
           console.log('⚠️  No stored token/user found');
@@ -163,6 +181,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         if (token && user) {
+          // Save tokens and verified user
           await secureStorage.setItem(storageKeys.tokenKey, token);
           await secureStorage.setItem(storageKeys.userKey, JSON.stringify(user));
           if (refreshToken) {
@@ -177,7 +196,17 @@ export const AuthProvider = ({ children }) => {
               hasUser: !!user
             });
           }
+        } else if (user && !token) {
+          // Save user data temporarily (for email verification flow)
+          // Don't save token since user is not verified yet
+          await secureStorage.setItem(storageKeys.userKey, JSON.stringify(user));
+          await secureStorage.removeItem(storageKeys.tokenKey);
+          await secureStorage.removeItem(storageKeys.refreshKey);
+          if (isDev) {
+            console.log('💾 Saved unverified user to storage (awaiting email verification)');
+          }
         } else {
+          // No user and no token - clear everything
           await secureStorage.removeItem(storageKeys.tokenKey);
           await secureStorage.removeItem(storageKeys.userKey);
           await secureStorage.removeItem(storageKeys.refreshKey);
@@ -319,8 +348,13 @@ export const AuthProvider = ({ children }) => {
         setRefreshToken(data.refreshToken);
         refreshTokenRef.current = data.refreshToken;
       }
-      setUser(data.user);
-      userRef.current = data.user;
+      // Ensure isEmailVerified is set (should be true if login succeeded, as backend checks it)
+      const userData = {
+        ...data.user,
+        isEmailVerified: data.user?.isEmailVerified ?? true // Login only succeeds if email is verified
+      };
+      setUser(userData);
+      userRef.current = userData;
       
       // Note: Token persistence happens automatically via the persist effect
       // which watches token, user, and isAuthReady state changes
@@ -341,18 +375,60 @@ export const AuthProvider = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
+      // Clear any existing tokens before signup
+      // This prevents old tokens from persisting when a new user signs up
+      setToken(null);
+      setRefreshToken(null);
+      tokenRef.current = null;
+      refreshTokenRef.current = null;
+      
+      // Also clear tokens from storage immediately
+      try {
+        await secureStorage.removeItem(storageKeys.tokenKey);
+        await secureStorage.removeItem(storageKeys.refreshKey);
+        if (isDev) {
+          console.log('🗑️  Cleared old tokens from storage before signup');
+        }
+      } catch (storageErr) {
+        // Ignore storage errors
+        if (isDev) {
+          console.warn('⚠️ Failed to clear tokens from storage:', storageErr);
+        }
+      }
+      
       const data = await request('/api/auth/signup', {
         method: 'POST',
         body: JSON.stringify({ name, email, password, company, adminCode })
       });
-      setToken(data.token);
-      tokenRef.current = data.token;
-      if (data.refreshToken) {
-        setRefreshToken(data.refreshToken);
-        refreshTokenRef.current = data.refreshToken;
+      
+      if (isDev) {
+        console.log('📝 Signup response:', { hasUser: !!data.user, hasToken: !!data.token, data });
       }
-      setUser(data.user);
-      userRef.current = data.user;
+      
+      // Don't save tokens on signup - user must verify email first
+      // Only save user data (without tokens) so we can show verification screen
+      if (data.user) {
+        // Ensure isEmailVerified is false
+        const userData = { ...data.user, isEmailVerified: false };
+        setUser(userData);
+        userRef.current = userData;
+        
+        if (isDev) {
+          console.log('✅ Signup successful, user set (awaiting verification):', {
+            email: userData.email,
+            isEmailVerified: userData.isEmailVerified,
+            userId: userData.id
+          });
+        }
+      } else {
+        if (isDev) {
+          console.warn('⚠️ Signup response missing user data:', data);
+        }
+      }
+      
+      // Don't set tokens - they will be set after email verification
+      // This ensures user cannot access dashboard until email is verified
+      
       return true;
     } catch (err) {
       // Provide user-friendly error messages
@@ -375,7 +451,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, request]);
+  }, [apiUrl, request, storageKeys]);
 
   const getSites = useCallback(async () => {
     const data = await request('/api/sites');
@@ -400,8 +476,13 @@ export const AuthProvider = ({ children }) => {
       const updatedUser = data.user || {
         ...(userRef.current || {}),
         sites: data.sites,
-        site: data.activeSite
+        site: data.activeSite,
+        isEmailVerified: data.user?.isEmailVerified ?? userRef.current?.isEmailVerified ?? true
       };
+      // Ensure isEmailVerified is preserved
+      if (!updatedUser.isEmailVerified && userRef.current?.isEmailVerified) {
+        updatedUser.isEmailVerified = true;
+      }
       setUser(updatedUser);
       userRef.current = updatedUser;
       return data;
@@ -421,11 +502,18 @@ export const AuthProvider = ({ children }) => {
         method: 'PUT',
         body: JSON.stringify({ site })
       });
-      setToken(data.token);
-      tokenRef.current = data.token;
-      setUser(data.user);
-      userRef.current = data.user;
-      return data.user;
+      if (data.token) {
+        setToken(data.token);
+        tokenRef.current = data.token;
+      }
+      // Ensure isEmailVerified is preserved when updating user
+      const updatedUser = {
+        ...data.user,
+        isEmailVerified: data.user?.isEmailVerified ?? userRef.current?.isEmailVerified ?? true
+      };
+      setUser(updatedUser);
+      userRef.current = updatedUser;
+      return updatedUser;
     } catch (err) {
       setError(err.message);
       return null;
@@ -448,9 +536,12 @@ export const AuthProvider = ({ children }) => {
       apiUrl,
       getSites,
       addSite,
-      setActiveSite
+      setActiveSite,
+      setToken,
+      setRefreshToken,
+      setUser
     }),
-    [token, user, isLoading, error, isAuthReady, login, signup, logout, request, apiUrl, getSites, addSite, setActiveSite]
+    [token, user, isLoading, error, isAuthReady, login, signup, logout, request, apiUrl, getSites, addSite, setActiveSite, setToken, setRefreshToken, setUser]
   );
 
   // Gate rendering at provider level until auth hydration completes.

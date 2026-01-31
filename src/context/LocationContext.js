@@ -966,6 +966,11 @@ export const LocationProvider = ({ children }) => {
 
   const verifyAttendanceStatus = async () => {
     if (!token) return null;
+    // Don't make request if user doesn't have a site set yet
+    // This prevents "Active site is required" errors
+    if (!user?.site) {
+      return null;
+    }
     try {
       const data = await request('/api/employees/attendance/current');
       if (!data?.success) return null;
@@ -1084,6 +1089,10 @@ export const LocationProvider = ({ children }) => {
       
       return data; // Return the data for caller to use
     } catch (error) {
+      // Silently handle "Active site is required" errors - this is expected when user hasn't set a site yet
+      if (error?.message?.includes('Active site is required')) {
+        return null;
+      }
       console.error('Error verifying attendance status:', error);
       return null;
     }
@@ -1093,6 +1102,12 @@ export const LocationProvider = ({ children }) => {
     const initialize = async () => {
       try {
         if (!token || !storageKeys) return;
+        
+        // Don't initialize if user doesn't have a site set yet
+        // This prevents "Active site is required" errors before login/site setup
+        if (!user?.site) {
+          return;
+        }
         
         // Clean up legacy keys
         await AsyncStorage.multiRemove([LEGACY_ATTENDANCE_KEY, LEGACY_SELECTED_GEOFENCE_KEY]);
@@ -1145,6 +1160,11 @@ export const LocationProvider = ({ children }) => {
           await startLocationTracking();
         }
       } catch (error) {
+        // Silently handle "Active site is required" errors - this is expected when user hasn't set a site yet
+        if (error?.message?.includes('Active site is required')) {
+          // This is expected when user doesn't have a site set, so we can silently ignore it
+          return;
+        }
         console.error('Error initializing location context:', error);
         if (storageKeys?.attendance) {
           await AsyncStorage.removeItem(storageKeys.attendance);
@@ -1157,13 +1177,19 @@ export const LocationProvider = ({ children }) => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, storageKeys, userId]);
+  }, [token, storageKeys, userId, user?.site]);
 
   useEffect(() => {
     const loadSelected = async () => {
       if (!token || !storageKeys?.selectedGeofenceId) {
         setSelectedGeofenceId(null);
         setWorkingHoursState({ startTime: '08:00', endTime: '16:30' });
+        return;
+      }
+
+      // Don't load preferences if user doesn't have a site set yet
+      // This prevents "Active site is required" errors before login/site setup
+      if (!user?.site) {
         return;
       }
 
@@ -1226,6 +1252,10 @@ export const LocationProvider = ({ children }) => {
           return; // Successfully loaded from database, exit early
         }
       } catch (error) {
+        // Silently handle "Active site is required" errors - this is expected when user hasn't set a site yet
+        if (error?.message?.includes('Active site is required')) {
+          return;
+        }
         console.warn('[LocationContext] Failed to load preferences from database, falling back to AsyncStorage:', error.message);
         // Fall through to AsyncStorage fallback
       }
@@ -1265,7 +1295,7 @@ export const LocationProvider = ({ children }) => {
     };
     loadSelected();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, storageKeys, clearAttendanceState, isTracking, attendanceStatus.isCheckedIn]);
+  }, [token, storageKeys, clearAttendanceState, isTracking, attendanceStatus.isCheckedIn, user?.site]);
 
   useEffect(() => {
     const persistSelected = async () => {

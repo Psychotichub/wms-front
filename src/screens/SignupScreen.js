@@ -14,7 +14,20 @@ const signupSchema = z.object({
   email: z.string().trim().min(1, 'Email is required').email('Enter a valid email'),
   company: z.string().trim().min(1, 'Company is required'),
   adminCode: z.string().optional(),
-  password: z.string().min(6, 'Password must be at least 6 characters')
+  password: z.string()
+    .min(6, 'Password must be at least 6 characters')
+    .refine((val) => /[A-Z]/.test(val), {
+      message: 'Password must contain at least one capital letter'
+    })
+    .refine((val) => /[a-z]/.test(val), {
+      message: 'Password must contain at least one lowercase letter'
+    })
+    .refine((val) => /[0-9]/.test(val), {
+      message: 'Password must contain at least one number'
+    })
+    .refine((val) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(val), {
+      message: 'Password must contain at least one special character'
+    })
 });
 
 const buildZodResolver = (schema) => async (values) => {
@@ -184,8 +197,14 @@ const SignupScreen = ({ navigation }) => {
   const onSubmit = useCallback(async (values) => {
     const code = values.adminCode?.trim() || getAdminSignupCode() || undefined;
     const ok = await signup(values.name, values.email, values.password, values.company, code);
+    
     if (ok) {
-      navigation.navigate('Login');
+      // Navigate to email verification screen after successful signup
+      // Use a small delay to ensure user state is set in AuthContext
+      // This prevents RootNavigator from resetting navigation
+      setTimeout(() => {
+        navigation.navigate('EmailVerification', { email: values.email });
+      }, 100);
     }
   }, [navigation, signup]);
 

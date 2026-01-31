@@ -173,6 +173,9 @@ export const NotificationProvider = ({ children }) => {
   // Load notifications (includes pending notifications from when user was offline)
   const loadNotifications = async (page = 1, limit = 20) => {
     if (!isAuthReady || !token) return;
+    // Don't load notifications if user doesn't have a site set yet
+    // This prevents "Active site is required" errors before login/site setup
+    if (!user?.site) return;
     try {
       // Fetch all notifications including pending ones (no status filter)
       // Backend will automatically mark pending notifications as delivered when fetched
@@ -194,6 +197,9 @@ export const NotificationProvider = ({ children }) => {
   // Load notification preferences
   const loadPreferences = async () => {
     if (!isAuthReady || !token) return;
+    // Don't load preferences if user doesn't have a site set yet
+    // This prevents "Active site is required" errors before login/site setup
+    if (!user?.site) return;
     try {
       const response = await request('/api/notifications/preferences', {
         __suppress401Log: true
@@ -356,17 +362,17 @@ export const NotificationProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Initialize when user logs in
+  // Initialize when user logs in and has a site set
   // Intentionally keyed only on user; avoid reloading on function identity changes.
   useEffect(() => {
-    if (isAuthReady && token && user) {
+    if (isAuthReady && token && user && user?.site) {
       registerForPushNotificationsAsync();
       registerForWebPushNotificationsAsync();
       loadNotifications();
       loadPreferences();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, token, isAuthReady]);
+  }, [user, token, isAuthReady, user?.site]);
 
   const value = {
     notifications,

@@ -96,13 +96,28 @@ const RootNavigator = () => {
 
   useEffect(() => {
     if (!isAuthReady || !navReady) return;
-    if (!token) {
-      setInitialNavState(undefined);
-      if (navigationRef.current?.resetRoot) {
-        navigationRef.current.resetRoot({ index: 0, routes: [{ name: 'Login' }] });
+    
+    // Only reset to Login if there's no token AND no user
+    // If user exists (even if not verified), allow navigation within AuthStack
+    // This allows navigation to EmailVerification after signup
+    // IMPORTANT: Don't reset if user exists - this allows navigation to EmailVerification
+    if (!token && !user) {
+      // Only reset if we're not currently navigating
+      // Check current route to avoid interfering with navigation
+      const currentRoute = navigationRef.current?.getCurrentRoute?.();
+      const isOnAuthScreen = currentRoute?.name === 'Signup' || 
+                             currentRoute?.name === 'EmailVerification' || 
+                             currentRoute?.name === 'Login';
+      
+      // Only reset if we're not on an auth screen (prevents interfering with navigation)
+      if (!isOnAuthScreen) {
+        setInitialNavState(undefined);
+        if (navigationRef.current?.resetRoot) {
+          navigationRef.current.resetRoot({ index: 0, routes: [{ name: 'Login' }] });
+        }
       }
     }
-  }, [isAuthReady, navReady, token]);
+  }, [isAuthReady, navReady, token, user]);
 
   // Debug logging
   useEffect(() => {
@@ -128,22 +143,27 @@ const RootNavigator = () => {
       theme={navTheme}
       initialState={initialNavState}
       onStateChange={async (state) => {
-        if (!storageKey) return;
         const activeRoute = getActiveRouteName(state);
-        if (token && activeRoute && !allowedRoutes.includes(activeRoute)) {
+        
+        // Only check allowed routes if user has token and is verified
+        if (token && user?.isEmailVerified && activeRoute && !allowedRoutes.includes(activeRoute)) {
           if (navigationRef.current?.resetRoot) {
             navigationRef.current.resetRoot({ index: 0, routes: [{ name: 'Access Denied' }] });
           }
           return;
         }
-        try {
-          await AsyncStorage.setItem(storageKey, JSON.stringify(state));
-        } catch {
-          // ignore persistence errors
+        
+        // Persist navigation state only for verified users with tokens
+        if (storageKey) {
+          try {
+            await AsyncStorage.setItem(storageKey, JSON.stringify(state));
+          } catch {
+            // ignore persistence errors
+          }
         }
       }}
     >
-      {token ? (
+      {token && user?.isEmailVerified ? (
         <DrawerProvider>
           <AppStack />
         </DrawerProvider>
