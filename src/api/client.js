@@ -187,7 +187,12 @@ export const createApiClient = ({
             break;
           }
           case 403:
-            errorMessage = 'Access denied. You may not have permission for this action.';
+            // Check if this is an email verification requirement
+            if (data.requiresVerification) {
+              errorMessage = data.message || 'Please verify your email before logging in. Check your inbox for the verification link and code.';
+            } else {
+              errorMessage = 'Access denied. You may not have permission for this action.';
+            }
             break;
           case 404:
             errorMessage = 'Service not found. Please try again later.';
@@ -229,6 +234,10 @@ export const createApiClient = ({
         error.status = response.status;
         error.data = data;
         error.response = { status: response.status, data };
+        // Attach requiresVerification flag if present in response data
+        if (data && data.requiresVerification) {
+          error.requiresVerification = true;
+        }
         throw error;
       }
 

@@ -39,6 +39,7 @@ const EmailVerificationScreen = () => {
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState(null);
   const [email, setEmail] = useState(route.params?.email || '');
+  const [hasAutoVerified, setHasAutoVerified] = useState(false);
 
   /**
    * Verify email with token or code
@@ -87,8 +88,7 @@ const EmailVerificationScreen = () => {
       setError(null);
       setVerificationCode(''); // Clear code input
 
-      // Redirect to dashboard after verification
-      // Wait a bit longer to ensure all state updates are complete
+      // Show success message for 2 seconds before redirecting to dashboard
       setTimeout(() => {
         if (navigationRef.current?.isReady()) {
           navigationRef.current.reset({
@@ -96,7 +96,7 @@ const EmailVerificationScreen = () => {
             routes: [{ name: 'Dashboard' }],
           });
         }
-      }, 800);
+      }, 2000); // 2 seconds to show success message
     } catch (err) {
       setError(err.message || 'Failed to verify email. Please try again.');
       setIsVerified(false);
@@ -105,19 +105,27 @@ const EmailVerificationScreen = () => {
     }
   }, [apiUrl, setToken, setRefreshToken, setUser]);
 
-  // Extract token from URL on web (but don't auto-verify)
+  // Extract token from URL on web and auto-verify
   useEffect(() => {
+    // Only auto-verify once
+    if (hasAutoVerified || isVerified || isVerifying) return;
+    
+    let token = null;
     if (Platform.OS === 'web') {
       const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
-      if (token) {
-        setVerificationToken(token);
-      }
+      token = urlParams.get('token');
     } else if (route.params?.token) {
       // Native: token from route params
-      setVerificationToken(route.params.token);
+      token = route.params.token;
     }
-  }, [route.params]);
+    
+    if (token) {
+      setVerificationToken(token);
+      setHasAutoVerified(true);
+      // Auto-verify with token when found in URL
+      verifyEmail(token, null);
+    }
+  }, [route.params, verifyEmail, hasAutoVerified, isVerified, isVerifying]);
 
   /**
    * Resend verification email
@@ -187,8 +195,20 @@ const EmailVerificationScreen = () => {
           </Text>
         </View>
 
+        {/* Success Message */}
+        {isVerified && (
+          <View style={[styles.errorCard, { backgroundColor: t.colors.success + '20', borderColor: t.colors.success }]}>
+            <View style={styles.errorRow}>
+              <Ionicons name="checkmark-circle" size={20} color={t.colors.success} />
+              <Text style={[styles.errorText, { color: t.colors.success }]}>
+                Email verified successfully! Redirecting to dashboard...
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Error Message */}
-        {error && (
+        {error && !isVerified && (
           <View style={[styles.errorCard, { backgroundColor: t.colors.danger + '20', borderColor: t.colors.danger }]}>
             <View style={styles.errorRow}>
               <Ionicons name="alert-circle-outline" size={20} color={t.colors.danger} />

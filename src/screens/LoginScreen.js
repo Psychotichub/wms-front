@@ -180,9 +180,14 @@ const LoginScreen = ({ navigation }) => {
   }, [isLoading, loadingRotation]);
 
   const onSubmit = useCallback(async (values) => {
-    const ok = await login(values.email, values.password, values.company);
-    if (!ok) return;
-  }, [login]);
+    const result = await login(values.email, values.password, values.company);
+    if (result && result.requiresVerification) {
+      // Navigate to email verification screen
+      navigation.navigate('EmailVerification', { email: result.email });
+      return;
+    }
+    if (!result) return;
+  }, [login, navigation]);
 
   return (
     <Screen>
@@ -388,7 +393,11 @@ const LoginScreen = ({ navigation }) => {
             )}
           />
 
-          {error ? <Text style={[styles.error, { color: t.colors.danger }]}>{error}</Text> : null}
+          {error ? (
+            <Text style={[styles.error, { color: t.colors.danger }]}>
+              {typeof error === 'string' ? error : error.message || String(error)}
+            </Text>
+          ) : null}
 
           {/* Remember Me & Forgot Password */}
           <View style={styles.optionsRow}>

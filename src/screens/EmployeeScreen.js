@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Pressable, ScrollView, Alert, FlatList } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Pressable, ScrollView, Alert, FlatList, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
@@ -77,11 +77,11 @@ const EmployeeItem = React.memo(({ item, colors, onEdit, onDelete }) => {
             <Text style={[styles.employeeRole, { color: getRoleColor(item.role) }]}>
               {item.role.charAt(0).toUpperCase() + item.role.slice(1)}
             </Text>
-            {item.department && (
+            {item.department ? (
               <Text style={[styles.employeeDept, { color: colors.textSecondary }]}>
                 • {item.department}
               </Text>
-            )}
+            ) : null}
             {item.user ? (
               <Text style={[styles.employeeDept, { color: colors.success, marginLeft: 4 }]}>
                 • Has Account
@@ -125,7 +125,7 @@ const EmployeeItem = React.memo(({ item, colors, onEdit, onDelete }) => {
         <View style={styles.statItem}>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Rating</Text>
           <Text style={[styles.statValue, { color: colors.text }]}>
-            {item.productivityMetrics?.efficiencyRating?.toFixed(1) || '0.0'}/5.0
+            {`${item.productivityMetrics?.efficiencyRating?.toFixed(1) || '0.0'}/5.0`}
           </Text>
         </View>
       </View>
@@ -133,6 +133,80 @@ const EmployeeItem = React.memo(({ item, colors, onEdit, onDelete }) => {
   );
 });
 EmployeeItem.displayName = 'EmployeeItem';
+
+// Password Requirements Component
+const PasswordRequirements = ({ password, colors }) => {
+  const requirements = [
+    { 
+      text: 'At least 6 characters', 
+      met: password.length >= 6 
+    },
+    { 
+      text: 'At least one capital letter', 
+      met: /[A-Z]/.test(password) 
+    },
+    { 
+      text: 'At least one lowercase letter', 
+      met: /[a-z]/.test(password) 
+    },
+    { 
+      text: 'At least one number', 
+      met: /[0-9]/.test(password) 
+    },
+    { 
+      text: 'At least one special character (!@#$%^&*...)', 
+      met: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password) 
+    }
+  ];
+
+  if (!password || password.length === 0) {
+    return (
+      <View style={{ marginTop: 8 }}>
+        <Text style={[{ fontSize: 12, marginBottom: 4, color: colors.textSecondary }]}>
+          Password must contain:
+        </Text>
+        {requirements.map((req, idx) => (
+          <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+            <Ionicons 
+              name="ellipse-outline" 
+              size={12} 
+              color={colors.textSecondary} 
+              style={{ marginRight: 6 }}
+            />
+            <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+              {req.text}
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ marginTop: 8 }}>
+      <Text style={[{ fontSize: 12, marginBottom: 4, color: colors.textSecondary }]}>
+        Password requirements:
+      </Text>
+      {requirements.map((req, idx) => (
+        <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+          <Ionicons 
+            name={req.met ? "checkmark-circle" : "ellipse-outline"} 
+            size={14} 
+            color={req.met ? colors.success : colors.textSecondary} 
+            style={{ marginRight: 6 }}
+          />
+          <Text style={{ 
+            fontSize: 12, 
+            color: req.met ? colors.success : colors.textSecondary,
+            textDecorationLine: req.met ? 'none' : 'none'
+          }}>
+            {req.text}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+};
 
 const EmployeeScreen = () => {
   const { request } = useAuth();
@@ -144,6 +218,7 @@ const EmployeeScreen = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState('');
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const [geofences, setGeofences] = useState([]);
   const [loadingGeofences, setLoadingGeofences] = useState(false);
@@ -326,26 +401,46 @@ const EmployeeScreen = () => {
   }, [loadGeofences, loadEmployeePreferences]);
 
   const handleDelete = useCallback(async (id) => {
-    Alert.alert(
-      'Confirm Deactivation',
-      'Are you sure you want to deactivate this employee?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Deactivate',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await request(`/api/employees/${id}`, { method: 'DELETE' });
-              setMessage('Employee deactivated successfully');
-              loadEmployees();
-            } catch (error) {
-              setMessage(error.message || 'Failed to deactivate employee');
+    const isWeb = Platform.OS === 'web';
+    
+    if (isWeb) {
+      const shouldDelete = window.confirm(
+        'Are you sure you want to delete this employee? This will permanently delete the employee record and their associated user account. This action cannot be undone.'
+      );
+      if (!shouldDelete) {
+        return;
+      }
+      
+      try {
+        await request(`/api/employees/${id}`, { method: 'DELETE' });
+        setMessage('Employee and account deleted successfully');
+        loadEmployees();
+      } catch (error) {
+        setMessage(error.message || 'Failed to delete employee');
+      }
+    } else {
+      // For iOS and Android, use Alert.alert
+      Alert.alert(
+        'Confirm Deletion',
+        'Are you sure you want to delete this employee? This will permanently delete the employee record and their associated user account. This action cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await request(`/api/employees/${id}`, { method: 'DELETE' });
+                setMessage('Employee and account deleted successfully');
+                loadEmployees();
+              } catch (error) {
+                setMessage(error.message || 'Failed to delete employee');
+              }
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
   }, [loadEmployees, request]);
 
   const renderEmployeeItem = useCallback(
@@ -466,11 +561,16 @@ const EmployeeScreen = () => {
               placeholder={editingId ? "New password (min 6 characters)" : "Password for login account (min 6 characters)"}
               value={formData.password}
               onChangeText={(text) => setFormData({ ...formData, password: text })}
+              onFocus={() => setPasswordFocused(true)}
+              onBlur={() => setPasswordFocused(false)}
               placeholderTextColor={t.colors.textSecondary}
               secureTextEntry
             />
+            {(passwordFocused || formData.password.length > 0) && (
+              <PasswordRequirements password={formData.password} colors={t.colors} />
+            )}
             {!editingId && (
-              <Text style={[styles.helperText, { color: t.colors.textSecondary }]}>
+              <Text style={[styles.helperText, { color: t.colors.textSecondary, marginTop: 8 }]}>
                 If password is provided, a user account will be created so the employee can log in and receive tasks.
               </Text>
             )}

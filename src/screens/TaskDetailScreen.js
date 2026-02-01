@@ -8,7 +8,8 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
-  TextInput
+  TextInput,
+  Platform
 } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -567,14 +568,24 @@ const TaskDetailScreen = () => {
                   <Button
                     title="Cancel Task"
                     onPress={() => {
-                      Alert.alert(
-                        'Cancel Task',
-                        'Are you sure you want to cancel this task?',
-                        [
-                          { text: 'No', style: 'cancel' },
-                          { text: 'Yes', onPress: () => handleStatusUpdate('cancelled') }
-                        ]
-                      );
+                      const isWeb = Platform.OS === 'web';
+                      
+                      if (isWeb) {
+                        const shouldCancel = window.confirm('Are you sure you want to cancel this task?');
+                        if (shouldCancel) {
+                          handleStatusUpdate('cancelled');
+                        }
+                      } else {
+                        // For iOS and Android, use Alert.alert
+                        Alert.alert(
+                          'Cancel Task',
+                          'Are you sure you want to cancel this task?',
+                          [
+                            { text: 'No', style: 'cancel' },
+                            { text: 'Yes', onPress: () => handleStatusUpdate('cancelled') }
+                          ]
+                        );
+                      }
                     }}
                     disabled={updating}
                     style={[styles.actionButton, { backgroundColor: t.colors.danger }]}

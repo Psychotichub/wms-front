@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Pressable, Platform, FlatList } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Pressable, Platform, FlatList, Alert } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
@@ -60,7 +60,7 @@ const UserRow = React.memo(({ item, colors, onSelectUser, onDelete }) => {
         </Pressable>
         <Pressable
           style={[styles.actionBtn, { backgroundColor: getRGBA(colors.danger, 0.12) }]}
-          onPress={() => onDelete(item._id)}
+          onPress={() => onDelete(item)}
         >
           <Ionicons name="trash-outline" size={16} color={colors.danger} />
         </Pressable>
@@ -146,14 +146,64 @@ const CreateUserScreen = () => {
     }
   };
 
-  const handleDeleteUser = useCallback(async (id) => {
-    setMessage('');
-    try {
-      await request(`/api/users/${id}`, { method: 'DELETE' });
-      setMessage('User deleted');
-      loadUsers();
-    } catch (err) {
-      setMessage(err.message);
+  const handleDeleteUser = useCallback(async (userItem) => {
+    if (!userItem || !userItem._id) return;
+    
+    const userName = userItem.name || userItem.email || 'this user';
+    const isWeb = Platform.OS === 'web';
+    
+    // Show confirmation dialog
+    if (isWeb) {
+      const shouldDelete = window.confirm(
+        `Are you sure you want to delete the user account for ${userName}? This action cannot be undone.`
+      );
+      if (!shouldDelete) {
+        return;
+      }
+      
+      // Web path - execute delete
+      setMessage('');
+      try {
+        await request(`/api/users/${userItem._id}`, { method: 'DELETE' });
+        setMessage('User deleted');
+        loadUsers();
+      } catch (err) {
+        setMessage(err.message);
+      }
+    } else {
+      // For iOS and Android, use Alert.alert
+      // Since Alert.alert is not async, we'll use a promise wrapper
+      return new Promise((resolve) => {
+        Alert.alert(
+          'Delete User Account',
+          `Are you sure you want to delete the user account for ${userName}? This action cannot be undone.`,
+          [
+            { 
+              text: 'Cancel', 
+              style: 'cancel',
+              onPress: () => {
+                resolve();
+              }
+            },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  setMessage('');
+                  await request(`/api/users/${userItem._id}`, { method: 'DELETE' });
+                  setMessage('User deleted');
+                  loadUsers();
+                  resolve();
+                } catch (err) {
+                  setMessage(err.message);
+                  resolve();
+                }
+              }
+            }
+          ]
+        );
+      });
     }
   }, [loadUsers, request]);
 

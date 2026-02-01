@@ -6,10 +6,10 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import Screen from '../components/Screen';
 import { useThemeTokens } from '../theme/ThemeProvider';
 import { useNotifications } from '../context/NotificationContext';
@@ -179,21 +179,29 @@ const NotificationsScreen = () => {
   };
 
   const handleMarkAllRead = () => {
-    Alert.alert(
-      'Mark All as Read',
-      'Are you sure you want to mark all notifications as read?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Mark All Read',
-          onPress: markAllAsRead
-        }
-      ]
-    );
+    const isWeb = Platform.OS === 'web';
+    
+    if (isWeb) {
+      const shouldMarkAll = window.confirm('Are you sure you want to mark all notifications as read?');
+      if (shouldMarkAll) {
+        markAllAsRead();
+      }
+    } else {
+      // For iOS and Android, use Alert.alert
+      Alert.alert(
+        'Mark All as Read',
+        'Are you sure you want to mark all notifications as read?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Mark All Read',
+            onPress: markAllAsRead
+          }
+        ]
+      );
+    }
   };
 
-  const navigation = useNavigation();
-  
   const handleNotificationPress = useCallback((notification) => {
     // Mark as read
     markAsRead(notification._id);

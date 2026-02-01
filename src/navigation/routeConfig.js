@@ -66,6 +66,11 @@ export const appScreenConfig = [
     drawer: { label: 'My Tasks', icon: 'checkmark-done-outline' }
   },
   {
+    name: 'Todo List',
+    getComponent: () => require('../screens/TodoListScreen').default,
+    drawer: { label: 'Todo List', icon: 'list-outline' }
+  },
+  {
     name: 'Task Detail',
     getComponent: () => require('../screens/TaskDetailScreen').default
   },

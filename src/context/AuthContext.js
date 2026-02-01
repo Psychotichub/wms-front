@@ -361,6 +361,18 @@ export const AuthProvider = ({ children }) => {
       
       return true;
     } catch (err) {
+      // Check if this is an email verification requirement
+      if (err.requiresVerification) {
+        // Set a special error that includes the verification flag
+        const verificationError = new Error(err.message);
+        verificationError.requiresVerification = true;
+        verificationError.email = email; // Pass email for verification screen
+        setError(verificationError);
+        if (isDev) {
+          console.error('❌ Login failed: Email verification required');
+        }
+        return { requiresVerification: true, email };
+      }
       setError(err.message);
       if (isDev) {
         console.error('❌ Login failed:', err.message);
