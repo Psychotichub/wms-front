@@ -106,7 +106,10 @@ const AttendanceStatusScreen = ({ navigation }) => {
         await manualCheckOut();
         console.log('[AttendanceStatusScreen] Manual checkout successful');
         window.alert('Successfully checked out');
-        navigation.goBack();
+        // Small delay to ensure backend has processed the checkout before navigating
+        setTimeout(() => {
+          navigation.navigate('Attendance History', { refresh: true });
+        }, 1000);
       } catch (error) {
         console.error('[AttendanceStatusScreen] Manual checkout failed:', error);
         const errorMessage = error?.message || 'Failed to check out. Please try again.';
@@ -127,7 +130,10 @@ const AttendanceStatusScreen = ({ navigation }) => {
                 await manualCheckOut();
                 console.log('[AttendanceStatusScreen] Manual checkout successful');
                 Alert.alert('Success', 'Successfully checked out');
-                navigation.goBack();
+                // Small delay to ensure backend has processed the checkout before navigating
+                setTimeout(() => {
+                  navigation.navigate('Attendance History', { refresh: true });
+                }, 1000);
               } catch (error) {
                 console.error('[AttendanceStatusScreen] Manual checkout failed:', error);
                 const errorMessage = error?.message || 'Failed to check out. Please try again.';

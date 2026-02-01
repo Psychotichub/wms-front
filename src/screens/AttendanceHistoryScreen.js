@@ -89,7 +89,7 @@ const AttendanceItem = React.memo(({ item, colors }) => (
 ));
 AttendanceItem.displayName = 'AttendanceItem';
 
-const AttendanceHistoryScreen = ({ navigation }) => {
+const AttendanceHistoryScreen = ({ navigation, route }) => {
   const { request } = useAuth();
   const t = useThemeTokens();
 
@@ -175,9 +175,28 @@ const AttendanceHistoryScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       hasFocusedRef.current = true;
-      loadAttendanceHistory();
+      // Force refresh when screen is focused to ensure latest data is loaded
+      // This is especially important after checkout
+      setLoading(true);
+      // Small delay to ensure backend has processed any recent checkouts
+      const timer = setTimeout(() => {
+        loadAttendanceHistory();
+      }, 300);
+      return () => clearTimeout(timer);
     }, [loadAttendanceHistory])
   );
+
+  // Also refresh when route params indicate a refresh is needed
+  useEffect(() => {
+    if (route?.params?.refresh) {
+      setLoading(true);
+      setTimeout(() => {
+        loadAttendanceHistory();
+        // Clear the refresh param to avoid repeated refreshes
+        navigation.setParams({ refresh: undefined });
+      }, 300);
+    }
+  }, [route?.params?.refresh, loadAttendanceHistory, navigation]);
 
   useEffect(() => {
     if (!hasFocusedRef.current) return;
