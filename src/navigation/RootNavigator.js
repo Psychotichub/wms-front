@@ -130,9 +130,9 @@ const RootNavigator = () => {
         flex: 1, 
         justifyContent: 'center', 
         alignItems: 'center', 
-        backgroundColor: t?.colors?.background || '#f7f9fb' 
+        backgroundColor: t?.colors?.background || '#020617' 
       }}>
-        <ActivityIndicator size="large" color={t?.colors?.primary || '#007AFF'} />
+        <ActivityIndicator size="large" color={t?.colors?.primary || '#22d3ee'} />
       </View>
     );
   }

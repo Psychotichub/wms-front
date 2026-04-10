@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import { useAuth } from '../context/AuthContext';
 import { useThemeTokens } from '../theme/ThemeProvider';
+import { elevation } from '../theme/elevation';
 import Button from '../components/ui/Button';
 
 const loginSchema = z.object({
@@ -228,7 +229,7 @@ const LoginScreen = ({ navigation }) => {
 
         {/* Title & Subtitle */}
         <View style={styles.headerSection}>
-          <Text style={[styles.title, { color: t.colors.text }]}>Welcome to WMS</Text>
+          <Text style={[styles.title, { color: t.colors.primary }]}>Welcome to WMS</Text>
           <Text style={[styles.subtitle, { color: t.colors.textSecondary }]}>
             Streamline your work management and boost productivity
           </Text>
@@ -254,7 +255,7 @@ const LoginScreen = ({ navigation }) => {
             styles.loginCard, 
             { 
               backgroundColor: t.colors.card, 
-              borderColor: t.colors.border,
+              borderColor: t.colors.accent,
               opacity: formOpacity,
               transform: [{ translateY: formTranslateY }],
             }
@@ -281,6 +282,7 @@ const LoginScreen = ({ navigation }) => {
                       { color: t.colors.text, backgroundColor: t.colors.card }
                     ]}
                     placeholder="Email"
+                    accessibilityLabel="Email"
                     autoCapitalize="none"
                     keyboardType="email-address"
                     value={value}
@@ -318,6 +320,7 @@ const LoginScreen = ({ navigation }) => {
                       { color: t.colors.text, backgroundColor: t.colors.card }
                     ]}
                     placeholder="Company"
+                    accessibilityLabel="Company"
                     value={value}
                     onChangeText={onChange}
                     onFocus={() => setFocusedInput('company')}
@@ -359,6 +362,7 @@ const LoginScreen = ({ navigation }) => {
                       }
                     ]}
                     placeholder="Password"
+                    accessibilityLabel="Password"
                     secureTextEntry={!showPassword}
                     value={value}
                     onChangeText={(text) => {
@@ -379,6 +383,8 @@ const LoginScreen = ({ navigation }) => {
                   <Pressable
                     style={styles.eyeIcon}
                     onPress={() => setShowPassword(!showPassword)}
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                   >
                     <Ionicons 
                       name={showPassword ? "eye-off-outline" : "eye-outline"} 
@@ -404,6 +410,9 @@ const LoginScreen = ({ navigation }) => {
             <Pressable
               style={styles.rememberMeRow}
               onPress={() => setRememberMe(!rememberMe)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: rememberMe }}
+              accessibilityLabel="Remember me on this device"
             >
               <View style={[
                 styles.checkbox,
@@ -423,6 +432,7 @@ const LoginScreen = ({ navigation }) => {
               title={isLoading ? 'Logging in...' : 'Login'}
               onPress={handleSubmit(onSubmit)}
               disabled={isLoading || !isValid}
+              accessibilityLabel={isLoading ? 'Logging in' : 'Log in'}
             />
             {isLoading && (
               <Animated.View
@@ -572,20 +582,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 24,
     paddingVertical: 24,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
-      default: {
-        boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.1)',
-      },
-    }),
+    ...elevation.medium,
   },
   formContainer: {
     paddingHorizontal: 20,

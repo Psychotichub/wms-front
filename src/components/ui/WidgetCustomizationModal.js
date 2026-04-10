@@ -2,17 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View, Pressable, Modal, Switch, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeTokens } from '../../theme/ThemeProvider';
-
-const shadow = Platform.select({
-  ios: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12
-  },
-  android: { elevation: 3 },
-  default: { boxShadow: '0px 8px 16px rgba(0,0,0,0.12)' }
-});
+import { elevation } from '../../theme/elevation';
 
 const WIDGET_LABELS = {
   overview: {
@@ -69,6 +59,9 @@ const WidgetCustomizationModal = ({ visible, onClose, widgets, onToggleWidget, o
             <Text style={[styles.title, { color: t.colors.text }]}>Customize Dashboard</Text>
             <Pressable
               onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close customize dashboard"
+              hitSlop={8}
               style={[styles.closeButton, { backgroundColor: t.colors.background }]}
             >
               <Ionicons name="close" size={24} color={t.colors.text} />
@@ -85,7 +78,7 @@ const WidgetCustomizationModal = ({ visible, onClose, widgets, onToggleWidget, o
                 key={key}
                 style={[
                   styles.widgetItem,
-                  shadow,
+                  elevation.medium,
                   { backgroundColor: t.colors.card, borderColor: t.colors.border }
                 ]}
               >

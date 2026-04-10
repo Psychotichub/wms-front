@@ -12,8 +12,12 @@ const AuthStack = () => {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: t.colors.background, borderBottomColor: t.colors.border },
-        headerTintColor: t.colors.text,
+        headerStyle: {
+          backgroundColor: t.colors.surface,
+          borderBottomColor: t.colors.border,
+          borderBottomWidth: 1
+        },
+        headerTintColor: t.colors.primary,
         headerTitleStyle: { fontWeight: '700', color: t.colors.text }
       }}
     >

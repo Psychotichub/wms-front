@@ -6,6 +6,7 @@ import Screen from '../components/Screen';
 import SiteRequiredNotice from '../components/SiteRequiredNotice';
 import { useAuth } from '../context/AuthContext';
 import { useThemeTokens } from '../theme/ThemeProvider';
+import { elevation } from '../theme/elevation';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
@@ -386,11 +387,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 2,
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8 },
-      android: { elevation: 5 },
-      default: { boxShadow: '0px 4px 12px rgba(0,0,0,0.1)' }
-    })
+    ...elevation.medium,
   },
   modalTitle: { fontSize: 16, fontWeight: '700', marginBottom: 12 }
 });

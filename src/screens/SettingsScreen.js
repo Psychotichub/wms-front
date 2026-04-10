@@ -4,17 +4,22 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import { useAuth } from '../context/AuthContext';
-import { useThemeTokens } from '../theme/ThemeProvider';
+import { useThemeTokens, useTheme } from '../theme/ThemeProvider';
+import { elevation } from '../theme/elevation';
 import Button from '../components/ui/Button';
 
 const SettingItem = ({ icon, label, value, onPress, t, showArrow = true }) => (
   <Pressable
+    disabled={!onPress}
     style={({ pressed }) => [
       styles.item,
+      elevation.subtle,
       { backgroundColor: t.colors.card, borderColor: t.colors.border },
-      pressed && { opacity: 0.7 }
+      pressed && onPress && { opacity: 0.7 }
     ]}
     onPress={onPress}
+    accessibilityRole={onPress ? 'button' : undefined}
+    accessibilityLabel={onPress ? `${label}, ${value}` : undefined}
   >
     <View style={styles.itemLeft}>
       <View style={[styles.iconWrap, { backgroundColor: t.colors.background }]}>
@@ -37,6 +42,7 @@ const SettingsScreen = () => {
   const navigation = useNavigation();
   const { user, logout, apiUrl, getSites, addSite, setActiveSite } = useAuth();
   const t = useThemeTokens();
+  const { themePreference, setThemePreference } = useTheme();
   const [sites, setSites] = useState([]);
   const [activeSite, setActiveSiteState] = useState(user?.site || '');
   const [newSite, setNewSite] = useState('');
@@ -140,6 +146,38 @@ const SettingsScreen = () => {
             t={t}
             showArrow={false}
           />
+        </View>
+
+        <SectionHeader title="Appearance" t={t} />
+        <View style={styles.section}>
+          <Text style={[styles.themeHelper, { color: t.colors.textSecondary }]}>Theme</Text>
+          <View style={styles.themeRow}>
+            {(['system', 'light', 'dark']).map((opt) => (
+              <Pressable
+                key={opt}
+                onPress={() => setThemePreference(opt)}
+                accessibilityRole="button"
+                accessibilityLabel={opt === 'system' ? 'Use system theme' : opt === 'light' ? 'Use light theme' : 'Use dark theme'}
+                accessibilityState={{ selected: themePreference === opt }}
+                style={({ focused }) => [
+                  styles.themeChip,
+                  { borderColor: t.colors.border, backgroundColor: t.colors.card },
+                  themePreference === opt && { borderColor: t.colors.primary, borderWidth: 2 },
+                  Platform.OS === 'web' &&
+                    focused && {
+                      outlineWidth: 2,
+                      outlineStyle: 'solid',
+                      outlineColor: t.colors.focusRing,
+                      outlineOffset: 2
+                    }
+                ]}
+              >
+                <Text style={[styles.themeChipText, { color: t.colors.text }]}>
+                  {opt === 'system' ? 'System' : opt === 'light' ? 'Light' : 'Dark'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         {isAdmin ? (
@@ -346,12 +384,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 12,
     borderRadius: 12,
-    borderWidth: 1,
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 },
-      android: { elevation: 2 },
-      default: { boxShadow: '0px 2px 4px rgba(0,0,0,0.05)' }
-    })
+    borderWidth: 1
+  },
+  themeHelper: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+    marginLeft: 4
+  },
+  themeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  themeChip: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1
+  },
+  themeChipText: {
+    fontSize: 14,
+    fontWeight: '600'
   },
   itemLeft: {
     flexDirection: 'row',

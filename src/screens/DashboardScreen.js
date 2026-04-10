@@ -1,5 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, Pressable, Platform, Dimensions } from 'react-native';
+import { elevation } from '../theme/elevation';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-gifted-charts';
@@ -12,19 +14,8 @@ import { useAuth } from '../context/AuthContext';
 import { useThemeTokens } from '../theme/ThemeProvider';
 import { useWidgetPreferences } from '../hooks/useWidgetPreferences';
 
-const shadow = Platform.select({
-  ios: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12
-  },
-  android: { elevation: 3 },
-  default: { boxShadow: '0px 8px 16px rgba(0,0,0,0.12)' }
-});
-
-const StatTile = ({ label, value, icon, color, textColor, muted, cardColor, borderColor }) => (
-  <View style={[styles.tile, shadow, { borderColor, backgroundColor: cardColor }]}>
+const StatTile = ({ label, value, icon, color, textColor, muted, cardColor, borderColor, style }) => (
+  <View style={[styles.tile, elevation.medium, { borderColor, backgroundColor: cardColor }, style]}>
     <View style={[styles.iconWrap, { backgroundColor: color }]}>
       <Ionicons name={icon} size={18} color="#fff" />
     </View>
@@ -141,6 +132,8 @@ const WorkTrendsChart = ({ data, color, labelColor, backgroundColor }) => {
 const DashboardScreen = ({ navigation }) => {
   const { user, request } = useAuth();
   const t = useThemeTokens();
+  const { wide } = useBreakpoint();
+  const statTileBasis = wide ? '23%' : '48%';
   const { widgets, toggleWidget, resetToDefaults } = useWidgetPreferences();
   const [showCustomizationModal, setShowCustomizationModal] = useState(false);
   const [counts, setCounts] = useState({ reports: '—', materials: '—', panels: '—' });
@@ -272,6 +265,9 @@ const DashboardScreen = ({ navigation }) => {
           </View>
           <Pressable
             onPress={() => setShowCustomizationModal(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Customize dashboard widgets"
+            hitSlop={8}
             style={[styles.customizeButton, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}
           >
             <Ionicons name="options-outline" size={20} color={t.colors.primary} />
@@ -288,7 +284,11 @@ const DashboardScreen = ({ navigation }) => {
             ? Array.from({ length: 4 }).map((_, idx) => (
                 <View
                   key={`stat-skeleton-${idx}`}
-                  style={[styles.tile, shadow, { borderColor: t.colors.border, backgroundColor: t.colors.card }]}
+                  style={[
+                    styles.tile,
+                    elevation.medium,
+                    { borderColor: t.colors.border, backgroundColor: t.colors.card, flexBasis: statTileBasis }
+                  ]}
                 >
                   <SkeletonBar width={32} height={32} />
                   <SkeletonBar width="70%" height={16} />
@@ -303,6 +303,7 @@ const DashboardScreen = ({ navigation }) => {
                   borderColor={t.colors.border}
                   textColor={t.colors.text}
                   muted={t.colors.textSecondary}
+                  style={{ flexBasis: statTileBasis }}
                 />
               ))}
           </View>
@@ -460,15 +461,19 @@ const DashboardScreen = ({ navigation }) => {
         <Text style={[styles.sectionTitle, { color: t.colors.text }]}>Quick actions</Text>
         <View style={styles.actionRow}>
           <Pressable
-            style={[styles.actionCard, shadow, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}
+            style={[styles.actionCard, elevation.medium, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}
             onPress={() => navigation.navigate('Daily Report')}
+            accessibilityRole="button"
+            accessibilityLabel="Create daily report"
           >
             <Ionicons name="document-text-outline" size={20} color={t.colors.primary} />
             <Text style={[styles.actionText, { color: t.colors.text }]}>Create Daily Report</Text>
           </Pressable>
           <Pressable
-            style={[styles.actionCard, shadow, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}
+            style={[styles.actionCard, elevation.medium, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}
             onPress={() => navigation.navigate('Add Material')}
+            accessibilityRole="button"
+            accessibilityLabel="Add material"
           >
             <Ionicons name="add-circle-outline" size={20} color={t.colors.success} />
             <Text style={[styles.actionText, { color: t.colors.text }]}>Add Material</Text>
@@ -476,16 +481,20 @@ const DashboardScreen = ({ navigation }) => {
         </View>
         <View style={styles.actionRow}>
           <Pressable
-            style={[styles.actionCard, shadow, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}
+            style={[styles.actionCard, elevation.medium, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}
             onPress={() => navigation.navigate('Panel')}
+            accessibilityRole="button"
+            accessibilityLabel="Manage panels"
           >
             <Ionicons name="git-branch-outline" size={20} color={t.colors.warning} />
             <Text style={[styles.actionText, { color: t.colors.text }]}>Manage Panels</Text>
           </Pressable>
           {user?.role === 'admin' && (
             <Pressable
-              style={[styles.actionCard, shadow, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}
+              style={[styles.actionCard, elevation.medium, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}
               onPress={() => navigation.navigate('Employee')}
+              accessibilityRole="button"
+              accessibilityLabel="Manage employees"
             >
               <Ionicons name="people-outline" size={20} color={t.colors.info} />
               <Text style={[styles.actionText, { color: t.colors.text }]}>Manage Employees</Text>
@@ -494,8 +503,10 @@ const DashboardScreen = ({ navigation }) => {
         </View>
         <View style={styles.actionRow}>
           <Pressable
-            style={[styles.actionCard, shadow, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}
+            style={[styles.actionCard, elevation.medium, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}
             onPress={() => navigation.navigate('Setting')}
+            accessibilityRole="button"
+            accessibilityLabel="Open settings"
           >
             <Ionicons name="settings-outline" size={20} color={t.colors.primary} />
             <Text style={[styles.actionText, { color: t.colors.text }]}>Settings</Text>
@@ -525,13 +536,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   customizeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    ...shadow,
+    ...elevation.medium
   },
   title: { fontSize: 24, fontWeight: '700' },
   subtitle: { marginTop: 4 },
@@ -539,7 +550,6 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 10 },
   tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tile: {
-    flexBasis: '48%',
     borderRadius: 12,
     padding: 14,
     borderWidth: 1

@@ -20,13 +20,13 @@ module.exports = {
       shortName: 'WMS',
       lang: 'en',
       scope: '/',
-      themeColor: '#007AFF',
+      themeColor: '#0891b2',
       description: 'Working Management System for efficient project and employee management',
       // PWA settings
       orientation: 'portrait',
       display: 'standalone',
       startUrl: '/',
-      backgroundColor: '#ffffff'
+      backgroundColor: '#020617'
     },
     updates: {
       url: 'https://u.expo.dev/d1f4d263-2161-4968-a6eb-0a7f8de630f7'
@@ -41,6 +41,7 @@ module.exports = {
       }
     },
     plugins: [
+      'expo-font',
       [
         'expo-location',
         {

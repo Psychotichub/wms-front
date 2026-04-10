@@ -54,7 +54,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   notifBadgeText: {
-    color: '#0b1220',
     fontSize: 11,
     fontWeight: '800'
   },

@@ -1,27 +1,49 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, Platform } from 'react-native';
 import { useThemeTokens } from '../../theme/ThemeProvider';
+import { elevation } from '../../theme/elevation';
 
-const Button = ({ title, onPress, variant = 'primary', disabled }) => {
+const Button = ({
+  title,
+  onPress,
+  variant = 'primary',
+  disabled,
+  accessibilityLabel,
+  testID
+}) => {
   const t = useThemeTokens();
   const isPrimary = variant === 'primary';
+  const label = accessibilityLabel ?? title;
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={({ pressed }) => [
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
+      testID={testID}
+      style={({ pressed, focused }) => [
         styles.base,
+        elevation.low,
         isPrimary
           ? { backgroundColor: t.colors.primary, borderColor: t.colors.primary }
           : { backgroundColor: t.colors.card, borderColor: t.colors.border },
         pressed && { opacity: 0.9 },
-        disabled && { opacity: 0.5 }
+        disabled && { opacity: 0.5 },
+        Platform.OS === 'web' &&
+          focused && {
+            outlineWidth: 2,
+            outlineStyle: 'solid',
+            outlineColor: t.colors.focusRing,
+            outlineOffset: 2
+          }
       ]}
     >
       <Text
         style={[
-          styles.label,
-          isPrimary ? { color: '#f8fafc' } : { color: t.colors.text }
+          t.typography.body,
+          { fontWeight: '700' },
+          isPrimary ? { color: t.colors.onPrimary } : { color: t.colors.text }
         ]}
       >
         {title}
@@ -39,19 +61,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 44,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 10
-      },
-      android: { elevation: 2 },
-      default: { boxShadow: '0px 4px 10px rgba(0,0,0,0.10)' }
-    })
-  },
-  label: { fontSize: 15, fontWeight: '700' }
+    minWidth: 44
+  }
 });
 
 export default Button;
-

@@ -5,11 +5,11 @@ import {
   TextInput,
   View,
   Pressable,
-  Platform,
   Keyboard,
   ScrollView,
 } from 'react-native';
 import { useThemeTokens } from '../../theme/ThemeProvider';
+import { elevation } from '../../theme/elevation';
 
 /**
  * Reusable Autocomplete Input Component with Keyboard Support
@@ -121,17 +121,6 @@ const AutocompleteInput = ({
     }
   };
 
-  const shadow = Platform.select({
-    ios: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.2,
-      shadowRadius: 20,
-    },
-    android: { elevation: 20 },
-    default: { boxShadow: '0px 10px 20px rgba(0,0,0,0.2)' },
-  });
-
   const dropdownBg = t.mode === 'dark' ? t.colors.card : '#f0f9ff'; // Light blue tint
   const activeItemBg = t.mode === 'dark' ? getRGBA(t.colors.primary, 0.25) : '#bae6fd'; // Web-safe alpha
 
@@ -141,6 +130,7 @@ const AutocompleteInput = ({
         ref={inputRef}
         style={[
           styles.input,
+          t.typography.body,
           {
             borderColor: t.colors.border,
             backgroundColor: t.colors.card,
@@ -177,11 +167,10 @@ const AutocompleteInput = ({
             <View
               style={[
                 styles.dropdown,
-                shadow,
+                elevation.popover,
                 {
                   backgroundColor: dropdownBg,
                   borderColor: t.colors.primary,
-                  elevation: 110, // Ensure dropdown is above the container
                 },
               ]}
             >

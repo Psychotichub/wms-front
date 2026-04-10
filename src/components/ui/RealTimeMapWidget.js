@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { StyleSheet, View, Text, Platform, ActivityIndicator, Pressable, Alert } from 'react-native';
+import { StyleSheet, View, Text, ActivityIndicator, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import GeofenceMap, { Marker, Polygon, Circle } from '../GeofenceMap';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation } from '../../context/LocationContext';
 import { useThemeTokens } from '../../theme/ThemeProvider';
+import { elevation } from '../../theme/elevation';
 import EmptyState from './EmptyState';
 
 const UPDATE_INTERVAL = 30000; // 30 seconds
@@ -400,20 +401,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4
-      },
-      android: {
-        elevation: 2
-      },
-      default: {
-        boxShadow: '0px 2px 4px rgba(0,0,0,0.1)'
-      }
-    })
+    ...elevation.subtle,
   },
   header: {
     flexDirection: 'row',
@@ -466,20 +454,7 @@ const styles = StyleSheet.create({
     padding: 4,
     gap: 4,
     flexDirection: 'row',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4
-      },
-      android: {
-        elevation: 4
-      },
-      default: {
-        boxShadow: '0px 2px 8px rgba(0,0,0,0.15)'
-      }
-    })
+    ...elevation.low,
   },
   zoomButton: {
     padding: 8,

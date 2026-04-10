@@ -50,10 +50,10 @@ const DrawerContent = ({ onItemPress }) => {
   };
 
   return (
-    <View style={[styles.drawerContent, { backgroundColor: t.colors.card }]}>
+    <View style={[styles.drawerContent, { backgroundColor: t.colors.surface }]}>
       <View style={[styles.drawerHeader, { borderColor: t.colors.border }]}>
         <Image source={require('../../assets/logo.png')} style={styles.drawerLogo} resizeMode="contain" />
-        <Text style={[styles.drawerTitle, { color: t.colors.text }]}>Menu</Text>
+        <Text style={[styles.drawerTitle, { color: t.colors.primary }]}>Menu</Text>
       </View>
 
       <ScrollView 
@@ -66,12 +66,14 @@ const DrawerContent = ({ onItemPress }) => {
             key={item.label}
             style={[styles.drawerItem, { borderBottomColor: t.colors.border }]}
             onPress={() => handleItemPress(item)}
+            accessibilityRole="button"
+            accessibilityLabel={item.label}
           >
-            <Ionicons name={item.icon} size={24} color={t.colors.text} style={styles.drawerItemIcon} />
+            <Ionicons name={item.icon} size={24} color={t.colors.primary} style={styles.drawerItemIcon} />
             <Text style={[styles.drawerItemLabel, { color: t.colors.text }]}>{item.label}</Text>
             {item.badge > 0 && (
               <View style={[styles.drawerBadge, { backgroundColor: t.colors.primary }]}>
-                <Text style={[styles.drawerBadgeText, { color: '#fff' }]}>
+                <Text style={[styles.drawerBadgeText, { color: t.colors.onPrimary }]}>
                   {item.badge > 99 ? '99+' : item.badge}
                 </Text>
               </View>

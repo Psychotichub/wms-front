@@ -97,6 +97,11 @@ export const appScreenConfig = [
     roles: ['admin']
   },
   {
+    name: 'Isolation Test',
+    getComponent: () => require('../screens/IsolationTestScreen').default,
+    drawer: { label: 'Isolation Test', icon: 'flask-outline' }
+  },
+  {
     name: 'Setting',
     getComponent: () => require('../screens/SettingsScreen').default,
     drawer: { label: 'Setting', icon: 'settings-outline' }

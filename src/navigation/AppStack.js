@@ -14,13 +14,13 @@ const Stack = createNativeStackNavigator();
 const AppStack = () => {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
-  const { mode, setMode } = useTheme();
+  const { setThemePreference } = useTheme();
   const { toggleDrawer } = useDrawer();
   const t = useThemeTokens();
   const role = user?.role || 'user';
-  const headerBg = mode === 'dark' ? t.colors.background : t.colors.card;
+  const isDark = t.mode === 'dark';
 
-  const toggleMode = () => setMode(mode === 'dark' ? 'light' : 'dark');
+  const toggleMode = () => setThemePreference(isDark ? 'light' : 'dark');
   const safeUnreadCount = typeof unreadCount === 'number' && !isNaN(unreadCount) ? unreadCount : 0;
 
   return (
@@ -29,8 +29,9 @@ const AppStack = () => {
       screenOptions={({ navigation }) => ({
         headerShown: true,
         headerStyle: { 
-          backgroundColor: headerBg, 
+          backgroundColor: isDark ? t.colors.surface : t.colors.card, 
           borderBottomColor: t.colors.border,
+          borderBottomWidth: 1,
           ...Platform.select({
             web: {
               height: 48,
@@ -39,7 +40,7 @@ const AppStack = () => {
             }
           })
         },
-        headerTintColor: t.colors.text,
+        headerTintColor: t.colors.primary,
         headerTitleStyle: { fontWeight: '700', color: t.colors.text },
         ...Platform.select({
           web: {
@@ -52,8 +53,10 @@ const AppStack = () => {
           <Pressable
             style={styles.menuBtn}
             onPress={toggleDrawer}
+            accessibilityRole="button"
+            accessibilityLabel="Open menu"
           >
-            <Ionicons name="menu-outline" size={Platform.OS === 'web' ? 18 : 20} color={t.colors.text} />
+            <Ionicons name="menu-outline" size={Platform.OS === 'web' ? 18 : 20} color={t.colors.primary} />
           </Pressable>
         ),
         headerTitle: () => (
@@ -62,13 +65,15 @@ const AppStack = () => {
               <Pressable
                 style={styles.themeBtn}
                 onPress={toggleMode}
+                accessibilityRole="button"
+                accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
               >
                 <Ionicons
-                  name={mode === 'dark' ? 'moon-outline' : 'sunny-outline'}
+                  name={isDark ? 'moon-outline' : 'sunny-outline'}
                   size={16}
-                  color={t.colors.text}
+                  color={t.colors.primary}
                 />
-                <Text style={[styles.ctaText, { color: t.colors.text }]}>{mode === 'dark' ? 'Dark' : 'Light'}</Text>
+                <Text style={[styles.ctaText, { color: t.colors.primary }]}>{isDark ? 'Dark' : 'Light'}</Text>
               </Pressable>
             )}
             <Image
@@ -84,12 +89,13 @@ const AppStack = () => {
               <Pressable
                 style={styles.themeBtn}
                 onPress={toggleMode}
-                title={mode === 'dark' ? 'Dark Mode' : 'Light Mode'}
+                accessibilityRole="button"
+                accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
               >
                 <Ionicons
-                  name={mode === 'dark' ? 'moon-outline' : 'sunny-outline'}
-                  size={Platform.OS === 'web' ? 16 : 16}
-                  color={t.colors.text}
+                  name={isDark ? 'moon-outline' : 'sunny-outline'}
+                  size={16}
+                  color={t.colors.primary}
                 />
               </Pressable>
             )}
@@ -97,6 +103,8 @@ const AppStack = () => {
               <Pressable
                 style={styles.notifBtn}
                 onPress={() => navigation.navigate('Notifications')}
+                accessibilityRole="button"
+                accessibilityLabel={`Notifications${safeUnreadCount > 0 ? `, ${safeUnreadCount} unread` : ''}`}
               >
                 <Ionicons 
                   name="notifications-outline" 
@@ -105,7 +113,7 @@ const AppStack = () => {
                 />
                 {safeUnreadCount > 0 ? (
                   <View style={[styles.notifBadge, { backgroundColor: t.colors.primary }]}>
-                    <Text style={styles.notifBadgeText}>
+                    <Text style={[styles.notifBadgeText, { color: t.colors.onPrimary }]}>
                       {safeUnreadCount > 99 ? '99+' : safeUnreadCount}
                     </Text>
                   </View>
@@ -119,14 +127,16 @@ const AppStack = () => {
                 if (user) logout();
                 else navigation.navigate('Login');
               }}
+              accessibilityRole="button"
+              accessibilityLabel={user ? 'Logout' : 'Login'}
             >
               <Ionicons 
                 name={user ? 'log-out-outline' : 'log-in-outline'} 
-                size={Platform.OS === 'web' ? 16 : 16} 
-                color="#0b1220" 
+                size={16} 
+                color={t.colors.onPrimary} 
               />
               {Platform.OS !== 'web' && (
-                <Text style={[styles.ctaText, { color: '#0b1220' }]}>
+                <Text style={[styles.ctaText, { color: t.colors.onPrimary }]}>
                   {user ? 'Logout' : 'Login'}
                 </Text>
               )}

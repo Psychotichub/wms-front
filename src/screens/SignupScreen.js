@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import { useAuth } from '../context/AuthContext';
 import { useThemeTokens } from '../theme/ThemeProvider';
+import { elevation } from '../theme/elevation';
 import Button from '../components/ui/Button';
 import { getAdminSignupCode } from '../config/runtime';
 
@@ -247,7 +248,7 @@ const SignupScreen = ({ navigation }) => {
 
         {/* Title & Subtitle */}
         <View style={styles.headerSection}>
-          <Text style={[styles.title, { color: t.colors.text }]}>Create your WMS account</Text>
+          <Text style={[styles.title, { color: t.colors.primary }]}>Create your WMS account</Text>
           <Text style={[styles.subtitle, { color: t.colors.textSecondary }]}>
             Join thousands of teams managing their work efficiently
           </Text>
@@ -273,7 +274,7 @@ const SignupScreen = ({ navigation }) => {
             styles.signupCard, 
             { 
               backgroundColor: t.colors.card, 
-              borderColor: t.colors.border,
+              borderColor: t.colors.accent,
               opacity: formOpacity,
               transform: [{ translateY: formTranslateY }],
             }
@@ -644,20 +645,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 24,
     paddingVertical: 24,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
-      default: {
-        boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.1)',
-      },
-    }),
+    ...elevation.medium,
   },
   formContainer: {
     paddingHorizontal: 20,
