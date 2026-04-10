@@ -730,14 +730,15 @@ export const LocationProvider = ({ children }) => {
     });
   }, [verifyAttendanceStatus, request, storageKeys, userId, bindDevice, notifyGeofenceEvent]);
 
-  const handleCheckOut = useCallback(async (geofence, currentLoc) => {
+  const handleCheckOut = useCallback(async (geofence, currentLoc, { isAutomatic = false } = {}) => {
     const deviceInfo = getDeviceInfo();
     const checkOutData = {
-      ...(geofence?.id && { locationId: geofence.id }), // Only include locationId if available
+      ...(geofence?.id && { locationId: geofence.id }),
       latitude: currentLoc.coords.latitude || 0,
       longitude: currentLoc.coords.longitude || 0,
       timestamp: new Date().toISOString(),
       accuracy: currentLoc.coords.accuracy || 1000,
+      isAutomatic,
       deviceInfo
     };
 
@@ -751,14 +752,15 @@ export const LocationProvider = ({ children }) => {
       throw error;
     }
 
+    const isManual = !isAutomatic;
     setAttendanceStatus((prev) => {
       const checkoutTime = new Date();
-      const nextCheckInTime = new Date(checkoutTime.getTime() + (6 * 60 * 60 * 1000)); // 6 hours from checkout
+      const nextCheckInTime = isManual ? new Date(checkoutTime.getTime() + (6 * 60 * 60 * 1000)) : null;
       return {
         ...prev,
         isCheckedIn: false,
         isCheckedOut: true,
-        isManualCheckout: true,
+        isManualCheckout: isManual,
         checkOutTime: checkoutTime,
         nextCheckInTime: nextCheckInTime,
         dayKey: null
@@ -799,7 +801,7 @@ export const LocationProvider = ({ children }) => {
       const cooldownKey = `checkout-${currentGeofence.id}`;
       const last = geofenceCooldownRef.current.get(cooldownKey);
       if (!last || now - last > 60000) {
-        handleCheckOut(currentGeofence, currentLoc).catch((error) => {
+        handleCheckOut(currentGeofence, currentLoc, { isAutomatic: true }).catch((error) => {
           console.error('[LocationContext] handleGeofenceTransition: Check-out failed', error);
         });
         geofenceCooldownRef.current.set(cooldownKey, now);

@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Pressable, ScrollView, Alert, FlatList, Platform } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Pressable, Alert, FlatList, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
@@ -9,6 +9,7 @@ import Button from '../components/ui/Button';
 import AutocompleteInput from '../components/ui/AutocompleteInput';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
+import AnimatedListItem from '../components/ui/AnimatedListItem';
 
 const EMPLOYEE_ITEM_HEIGHT = 140;
 
@@ -444,13 +445,15 @@ const EmployeeScreen = () => {
   }, [loadEmployees, request]);
 
   const renderEmployeeItem = useCallback(
-    ({ item }) => (
-      <EmployeeItem
-        item={item}
-        colors={t.colors}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+    ({ item, index }) => (
+      <AnimatedListItem index={index}>
+        <EmployeeItem
+          item={item}
+          colors={t.colors}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      </AnimatedListItem>
     ),
     [handleEdit, handleDelete, t.colors]
   );
@@ -462,7 +465,20 @@ const EmployeeScreen = () => {
 
   return (
     <Screen>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <FlatList
+        data={loading ? Array.from({ length: 4 }).map((_, idx) => ({ id: `employee-skeleton-${idx}`, __skeleton: true })) : filteredEmployees}
+        keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.employeeList, { paddingBottom: 32 }]}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews
+        renderItem={renderEmployeeItem}
+        getItemLayout={getItemLayout}
+        ListHeaderComponent={
+          <>
         <View style={styles.header}>
           <Text style={[styles.title, { color: t.colors.text }]}>Employee Management</Text>
           <Pressable
@@ -718,29 +734,18 @@ const EmployeeScreen = () => {
         <Text style={[styles.sectionTitle, { color: t.colors.text }]}>
           Employees ({filteredEmployees.length})
         </Text>
-
-        <FlatList
-          data={loading ? Array.from({ length: 4 }).map((_, idx) => ({ id: `employee-skeleton-${idx}`, __skeleton: true })) : filteredEmployees}
-          keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
-          scrollEnabled={false}
-          contentContainerStyle={styles.employeeList}
-          initialNumToRender={6}
-          maxToRenderPerBatch={6}
-          windowSize={7}
-          removeClippedSubviews
-          renderItem={renderEmployeeItem}
-          getItemLayout={getItemLayout}
-          ListEmptyComponent={
-            !loading ? (
-              <EmptyState
-                icon="people-outline"
-                title="No employees yet"
-                subtitle="Create an employee to start tracking performance."
-              />
-            ) : null
-          }
-        />
-      </ScrollView>
+          </>
+        }
+        ListEmptyComponent={
+          !loading ? (
+            <EmptyState
+              icon="people-outline"
+              title="No employees yet"
+              subtitle="Create an employee to start tracking performance."
+            />
+          ) : null
+        }
+      />
     </Screen>
   );
 };
@@ -776,8 +781,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)'
+    borderWidth: 1
   },
   formTitle: {
     fontSize: 18,
@@ -845,7 +849,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
     minHeight: EMPLOYEE_ITEM_HEIGHT - 12
   },
   employeeHeader: {
@@ -897,7 +900,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
     paddingTop: 12
   },
   statItem: {
@@ -933,8 +935,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginTop: 8,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)'
+    borderWidth: 1
   },
   locationSelect: {
     flexDirection: 'row',

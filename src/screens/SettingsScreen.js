@@ -344,8 +344,7 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderRadius: 8,
-    padding: 12,
-    backgroundColor: '#fff'
+    padding: 12
   },
   siteMessage: {
     fontSize: 12

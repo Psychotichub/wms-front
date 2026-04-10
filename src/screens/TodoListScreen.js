@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Pressable, ScrollView, Alert, FlatList } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Pressable, Alert, FlatList } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
@@ -8,6 +8,7 @@ import { useThemeTokens } from '../theme/ThemeProvider';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
+import AnimatedListItem from '../components/ui/AnimatedListItem';
 
 const TODO_ITEM_HEIGHT = 120;
 
@@ -473,14 +474,16 @@ const TodoListScreen = () => {
   }, [todos]);
 
   const renderTodoItem = useCallback(
-    ({ item }) => (
-      <TodoItem
-        item={item}
-        colors={t.colors}
-        onToggle={handleToggle}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+    ({ item, index }) => (
+      <AnimatedListItem index={index}>
+        <TodoItem
+          item={item}
+          colors={t.colors}
+          onToggle={handleToggle}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      </AnimatedListItem>
     ),
     [t.colors, handleToggle, handleEdit, handleDelete]
   );
@@ -493,75 +496,212 @@ const TodoListScreen = () => {
 
   return (
     <Screen>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: t.colors.text }]}>Todo List</Text>
-          <Pressable
-            style={[styles.addBtn, { backgroundColor: t.colors.primary }]}
-            onPress={() => setShowForm(!showForm)}
-          >
-            <Ionicons name={showForm ? "close" : "add"} size={20} color="#fff" />
-            <Text style={styles.addBtnText}>
-              {showForm ? 'Cancel' : 'Add Todo'}
-            </Text>
-          </Pressable>
-        </View>
+      <FlatList
+        data={loading ? Array.from({ length: 4 }).map((_, idx) => ({ id: `todo-skeleton-${idx}`, __skeleton: true })) : filteredTodos}
+        keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews
+        renderItem={renderTodoItem}
+        getItemLayout={getItemLayout}
+        ListHeaderComponent={
+          <>
+            <View style={styles.header}>
+              <Text style={[styles.title, { color: t.colors.text }]}>Todo List</Text>
+              <Pressable
+                style={[styles.addBtn, { backgroundColor: t.colors.primary }]}
+                onPress={() => setShowForm(!showForm)}
+              >
+                <Ionicons name={showForm ? "close" : "add"} size={20} color="#fff" />
+                <Text style={styles.addBtnText}>
+                  {showForm ? 'Cancel' : 'Add Todo'}
+                </Text>
+              </Pressable>
+            </View>
 
-        {message ? (
-          <View style={[styles.messageBox, { backgroundColor: getRGBA(t.colors.primary, 0.1) }]}>
-            <Text style={[styles.messageText, { color: t.colors.text }]}>{message}</Text>
-            <Pressable onPress={() => setMessage('')}>
-              <Ionicons name="close" size={18} color={t.colors.text} />
-            </Pressable>
-          </View>
-        ) : null}
+            {message ? (
+              <View style={[styles.messageBox, { backgroundColor: getRGBA(t.colors.primary, 0.1) }]}>
+                <Text style={[styles.messageText, { color: t.colors.text }]}>{message}</Text>
+                <Pressable onPress={() => setMessage('')}>
+                  <Ionicons name="close" size={18} color={t.colors.text} />
+                </Pressable>
+              </View>
+            ) : null}
 
-        {showForm && (
-          <View style={[styles.form, { backgroundColor: getRGBA(t.colors.card, 0.5) }]}>
-            <Text style={[styles.formTitle, { color: t.colors.text }]}>
-              {editingId ? 'Edit Todo' : 'New Todo'}
-            </Text>
+            {showForm && (
+              <View style={[styles.form, { backgroundColor: getRGBA(t.colors.card, 0.5) }]}>
+                <Text style={[styles.formTitle, { color: t.colors.text }]}>
+                  {editingId ? 'Edit Todo' : 'New Todo'}
+                </Text>
 
-            <Text style={[styles.label, { color: t.colors.text }]}>Title *</Text>
-            <TextInput
-              style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-              placeholder="Todo title"
-              value={formData.title}
-              onChangeText={(text) => setFormData({ ...formData, title: text })}
-              placeholderTextColor={t.colors.textSecondary}
-            />
+                <Text style={[styles.label, { color: t.colors.text }]}>Title *</Text>
+                <TextInput
+                  style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                  placeholder="Todo title"
+                  value={formData.title}
+                  onChangeText={(text) => setFormData({ ...formData, title: text })}
+                  placeholderTextColor={t.colors.textSecondary}
+                />
 
-            <Text style={[styles.label, { color: t.colors.text }]}>Description</Text>
-            <TextInput
-              style={[styles.input, styles.textArea, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-              placeholder="Todo description"
-              value={formData.description}
-              onChangeText={(text) => setFormData({ ...formData, description: text })}
-              placeholderTextColor={t.colors.textSecondary}
-              multiline
-              numberOfLines={3}
-            />
+                <Text style={[styles.label, { color: t.colors.text }]}>Description</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                  placeholder="Todo description"
+                  value={formData.description}
+                  onChangeText={(text) => setFormData({ ...formData, description: text })}
+                  placeholderTextColor={t.colors.textSecondary}
+                  multiline
+                  numberOfLines={3}
+                />
 
-            <Text style={[styles.label, { color: t.colors.text }]}>Priority</Text>
-            <View style={styles.roleRow}>
-              {priorityOptions.map((option) => (
+                <Text style={[styles.label, { color: t.colors.text }]}>Priority</Text>
+                <View style={styles.roleRow}>
+                  {priorityOptions.map((option) => (
+                    <Pressable
+                      key={option.value}
+                      style={[
+                        styles.roleChip,
+                        { borderColor: t.colors.border, backgroundColor: t.colors.card },
+                        formData.priority === option.value && {
+                          borderColor: getPriorityColor(option.value, t.colors),
+                          backgroundColor: getRGBA(getPriorityColor(option.value, t.colors), 0.1)
+                        }
+                      ]}
+                      onPress={() => setFormData({ ...formData, priority: option.value })}
+                    >
+                      <Text
+                        style={[
+                          styles.roleText,
+                          { color: t.colors.text },
+                          formData.priority === option.value && { color: getPriorityColor(option.value, t.colors), fontWeight: '700' }
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <Text style={[styles.label, { color: t.colors.text }]}>Category</Text>
+                <TextInput
+                  style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                  placeholder="Category (optional)"
+                  value={formData.category}
+                  onChangeText={(text) => setFormData({ ...formData, category: text })}
+                  placeholderTextColor={t.colors.textSecondary}
+                />
+
+                <Text style={[styles.label, { color: t.colors.text }]}>Tags</Text>
+                <TextInput
+                  style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                  placeholder="Tags (comma separated)"
+                  value={formData.tags}
+                  onChangeText={(text) => setFormData({ ...formData, tags: text })}
+                  placeholderTextColor={t.colors.textSecondary}
+                />
+
+                <View style={styles.reminderSection}>
+                  <Pressable
+                    style={styles.reminderToggle}
+                    onPress={() => setFormData({
+                      ...formData,
+                      reminder: {
+                        ...formData.reminder,
+                        enabled: !formData.reminder.enabled
+                      }
+                    })}
+                  >
+                    <Ionicons
+                      name={formData.reminder.enabled ? "checkbox" : "square-outline"}
+                      size={20}
+                      color={formData.reminder.enabled ? t.colors.primary : t.colors.textSecondary}
+                    />
+                    <Text style={[styles.reminderLabel, { color: t.colors.text }]}>
+                      Set Reminder
+                    </Text>
+                  </Pressable>
+
+                  {formData.reminder.enabled && (
+                    <View style={styles.reminderInputs}>
+                      <View style={styles.reminderInputRow}>
+                        <Text style={[styles.miniLabel, { color: t.colors.textSecondary }]}>Date</Text>
+                        <TextInput
+                          style={[styles.input, styles.reminderInput, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                          placeholder="YYYY-MM-DD"
+                          value={formData.reminder.date}
+                          onChangeText={(text) => setFormData({
+                            ...formData,
+                            reminder: { ...formData.reminder, date: text }
+                          })}
+                          placeholderTextColor={t.colors.textSecondary}
+                        />
+                      </View>
+                      <View style={styles.reminderInputRow}>
+                        <Text style={[styles.miniLabel, { color: t.colors.textSecondary }]}>Time</Text>
+                        <TextInput
+                          style={[styles.input, styles.reminderInput, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                          placeholder="HH:MM"
+                          value={formData.reminder.time}
+                          onChangeText={(text) => setFormData({
+                            ...formData,
+                            reminder: { ...formData.reminder, time: text }
+                          })}
+                          placeholderTextColor={t.colors.textSecondary}
+                        />
+                      </View>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.formActions}>
+                  <Button title="Cancel" onPress={resetForm} variant="secondary" />
+                  <Button title={editingId ? 'Update Todo' : 'Create Todo'} onPress={handleSubmit} />
+                </View>
+              </View>
+            )}
+
+            <View style={[styles.statsContainer, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: t.colors.text }]}>{stats.total}</Text>
+                <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>Total</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: t.colors.primary }]}>{stats.active}</Text>
+                <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>Active</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: t.colors.success }]}>{stats.completed}</Text>
+                <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>Completed</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: t.colors.warning }]}>{stats.withReminders}</Text>
+                <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>Reminders</Text>
+              </View>
+            </View>
+
+            <View style={styles.filtersContainer}>
+              {filterOptions.map((option) => (
                 <Pressable
                   key={option.value}
                   style={[
-                    styles.roleChip,
+                    styles.filterChip,
                     { borderColor: t.colors.border, backgroundColor: t.colors.card },
-                    formData.priority === option.value && {
-                      borderColor: getPriorityColor(option.value, t.colors),
-                      backgroundColor: getRGBA(getPriorityColor(option.value, t.colors), 0.1)
+                    filter === option.value && {
+                      borderColor: t.colors.primary,
+                      backgroundColor: getRGBA(t.colors.primary, 0.1)
                     }
                   ]}
-                  onPress={() => setFormData({ ...formData, priority: option.value })}
+                  onPress={() => setFilter(option.value)}
                 >
                   <Text
                     style={[
-                      styles.roleText,
+                      styles.filterText,
                       { color: t.colors.text },
-                      formData.priority === option.value && { color: getPriorityColor(option.value, t.colors), fontWeight: '700' }
+                      filter === option.value && { color: t.colors.primary, fontWeight: '700' }
                     ]}
                   >
                     {option.label}
@@ -570,165 +710,30 @@ const TodoListScreen = () => {
               ))}
             </View>
 
-            <Text style={[styles.label, { color: t.colors.text }]}>Category</Text>
+            <Text style={[styles.label, { color: t.colors.textSecondary }]}>Search todos</Text>
             <TextInput
               style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-              placeholder="Category (optional)"
-              value={formData.category}
-              onChangeText={(text) => setFormData({ ...formData, category: text })}
+              placeholder="Search by title, description, or tags"
+              value={searchValue}
+              onChangeText={setSearchValue}
               placeholderTextColor={t.colors.textSecondary}
             />
 
-            <Text style={[styles.label, { color: t.colors.text }]}>Tags</Text>
-            <TextInput
-              style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-              placeholder="Tags (comma separated)"
-              value={formData.tags}
-              onChangeText={(text) => setFormData({ ...formData, tags: text })}
-              placeholderTextColor={t.colors.textSecondary}
+            <Text style={[styles.sectionTitle, { color: t.colors.text }]}>
+              Todos ({filteredTodos.length})
+            </Text>
+          </>
+        }
+        ListEmptyComponent={
+          !loading ? (
+            <EmptyState
+              icon="checkmark-circle-outline"
+              title="No todos yet"
+              subtitle="Create a todo to get started with reminders and notifications."
             />
-
-            <View style={styles.reminderSection}>
-              <Pressable
-                style={styles.reminderToggle}
-                onPress={() => setFormData({
-                  ...formData,
-                  reminder: {
-                    ...formData.reminder,
-                    enabled: !formData.reminder.enabled
-                  }
-                })}
-              >
-                <Ionicons
-                  name={formData.reminder.enabled ? "checkbox" : "square-outline"}
-                  size={20}
-                  color={formData.reminder.enabled ? t.colors.primary : t.colors.textSecondary}
-                />
-                <Text style={[styles.reminderLabel, { color: t.colors.text }]}>
-                  Set Reminder
-                </Text>
-              </Pressable>
-
-              {formData.reminder.enabled && (
-                <View style={styles.reminderInputs}>
-                  <View style={styles.reminderInputRow}>
-                    <Text style={[styles.miniLabel, { color: t.colors.textSecondary }]}>Date</Text>
-                    <TextInput
-                      style={[styles.input, styles.reminderInput, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-                      placeholder="YYYY-MM-DD"
-                      value={formData.reminder.date}
-                      onChangeText={(text) => setFormData({
-                        ...formData,
-                        reminder: { ...formData.reminder, date: text }
-                      })}
-                      placeholderTextColor={t.colors.textSecondary}
-                    />
-                  </View>
-                  <View style={styles.reminderInputRow}>
-                    <Text style={[styles.miniLabel, { color: t.colors.textSecondary }]}>Time</Text>
-                    <TextInput
-                      style={[styles.input, styles.reminderInput, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-                      placeholder="HH:MM"
-                      value={formData.reminder.time}
-                      onChangeText={(text) => setFormData({
-                        ...formData,
-                        reminder: { ...formData.reminder, time: text }
-                      })}
-                      placeholderTextColor={t.colors.textSecondary}
-                    />
-                  </View>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.formActions}>
-              <Button title="Cancel" onPress={resetForm} variant="secondary" />
-              <Button title={editingId ? 'Update Todo' : 'Create Todo'} onPress={handleSubmit} />
-            </View>
-          </View>
-        )}
-
-        <View style={[styles.statsContainer, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: t.colors.text }]}>{stats.total}</Text>
-            <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>Total</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: t.colors.primary }]}>{stats.active}</Text>
-            <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>Active</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: t.colors.success }]}>{stats.completed}</Text>
-            <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>Completed</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: t.colors.warning }]}>{stats.withReminders}</Text>
-            <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>Reminders</Text>
-          </View>
-        </View>
-
-        <View style={styles.filtersContainer}>
-          {filterOptions.map((option) => (
-            <Pressable
-              key={option.value}
-              style={[
-                styles.filterChip,
-                { borderColor: t.colors.border, backgroundColor: t.colors.card },
-                filter === option.value && {
-                  borderColor: t.colors.primary,
-                  backgroundColor: getRGBA(t.colors.primary, 0.1)
-                }
-              ]}
-              onPress={() => setFilter(option.value)}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  { color: t.colors.text },
-                  filter === option.value && { color: t.colors.primary, fontWeight: '700' }
-                ]}
-              >
-                {option.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={[styles.label, { color: t.colors.textSecondary }]}>Search todos</Text>
-        <TextInput
-          style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-          placeholder="Search by title, description, or tags"
-          value={searchValue}
-          onChangeText={setSearchValue}
-          placeholderTextColor={t.colors.textSecondary}
-        />
-
-        <Text style={[styles.sectionTitle, { color: t.colors.text }]}>
-          Todos ({filteredTodos.length})
-        </Text>
-
-        <FlatList
-          data={loading ? Array.from({ length: 4 }).map((_, idx) => ({ id: `todo-skeleton-${idx}`, __skeleton: true })) : filteredTodos}
-          keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
-          scrollEnabled={false}
-          contentContainerStyle={styles.todoList}
-          initialNumToRender={6}
-          maxToRenderPerBatch={6}
-          windowSize={7}
-          removeClippedSubviews
-          renderItem={renderTodoItem}
-          getItemLayout={getItemLayout}
-          ListEmptyComponent={
-            !loading ? (
-              <EmptyState
-                icon="checkmark-circle-outline"
-                title="No todos yet"
-                subtitle="Create a todo to get started with reminders and notifications."
-              />
-            ) : null
-          }
-        />
-      </ScrollView>
+          ) : null
+        }
+      />
     </Screen>
   );
 };
@@ -953,8 +958,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)'
+    borderTopWidth: 1
   },
   lockedBadge: {
     flexDirection: 'row',

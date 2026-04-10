@@ -262,7 +262,7 @@ const PanelScreen = () => {
         <Button title={editingId ? 'Update Panel' : 'Save Panel'} onPress={handleSubmit} />
         {message ? <Text style={[styles.message, { color: t.colors.text }]}>{message}</Text> : null}
 
-        {loading || panels.length > 0 ? (
+        {(loading || panels.length > 0) && (
           <>
             <Text style={[styles.label, { color: t.colors.textSecondary }]}>Search panel</Text>
             <AutocompleteInput
@@ -273,36 +273,30 @@ const PanelScreen = () => {
               placeholder="Type to search panel name"
               containerStyle={{ marginBottom: 12 }}
             />
-
             <Text style={[styles.tableTitle, { color: t.colors.text }]}>Saved Panels</Text>
-            <FlatList
-              data={panelListData}
-              keyExtractor={(item) => (item.__skeleton ? item.id : item[0])}
-              scrollEnabled={false}
-              initialNumToRender={6}
-              maxToRenderPerBatch={6}
-              windowSize={7}
-              removeClippedSubviews
-              renderItem={renderPanelGroup}
-              getItemLayout={getItemLayout}
-            />
-            {!loading && groupedPanels.length === 0 ? (
+          </>
+        )}
+
+        <FlatList
+          data={panelListData}
+          keyExtractor={(item) => (item.__skeleton ? item.id : item[0])}
+          scrollEnabled={false}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={7}
+          removeClippedSubviews
+          renderItem={renderPanelGroup}
+          getItemLayout={getItemLayout}
+          ListEmptyComponent={
+            !loading ? (
               <EmptyState
                 icon="git-branch-outline"
-                title="No panels match your search"
-                subtitle="Try a different panel name."
+                title={panels.length === 0 ? "No panels yet" : "No panels match your search"}
+                subtitle={panels.length === 0 ? "Create your first panel to get started." : "Try a different panel name."}
               />
-            ) : null}
-          </>
-        ) : (
-          !loading ? (
-            <EmptyState
-              icon="git-branch-outline"
-              title="No panels yet"
-              subtitle="Create your first panel to get started."
-            />
-          ) : null
-        )}
+            ) : null
+          }
+        />
       </View>
     </Screen>
   );
@@ -310,28 +304,27 @@ const PanelScreen = () => {
 
 const styles = StyleSheet.create({
   container: { paddingBottom: 32 },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 12 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 12 },
   label: { marginBottom: 6, fontWeight: '600' },
   input: {
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
-    marginBottom: 12,
-    backgroundColor: '#fff'
+    marginBottom: 12
   },
   message: { marginTop: 8 },
   tableTitle: { marginTop: 16, marginBottom: 8, fontSize: 18, fontWeight: '700' },
-  table: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' },
-  row: { flexDirection: 'row', borderBottomWidth: 1, borderColor: '#e5e7eb', alignItems: 'center', minHeight: PANEL_ROW_HEIGHT },
-  headerRow: { backgroundColor: '#f3f4f6' },
+  table: { borderWidth: 1, borderRadius: 8, overflow: 'hidden' },
+  row: { flexDirection: 'row', borderBottomWidth: 1, alignItems: 'center', minHeight: PANEL_ROW_HEIGHT },
+  headerRow: {},
   cell: { flex: 1, paddingVertical: 10, paddingHorizontal: 8 },
-  headerCell: { fontWeight: '700', color: '#374151' },
+  headerCell: { fontWeight: '700' },
   actionCell: { flexDirection: 'row', gap: 8 },
-  actionBtn: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6, backgroundColor: '#e0f2fe' },
-  actionText: { color: '#0369a1', fontWeight: '600' },
-  deleteBtn: { backgroundColor: '#fee2e2' },
-  deleteText: { color: '#b91c1c' },
-  muted: { color: '#6b7280', marginBottom: 8 }
+  actionBtn: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6 },
+  actionText: { fontWeight: '600' },
+  deleteBtn: {},
+  deleteText: {},
+  muted: { marginBottom: 8 }
 });
 
 export default PanelScreen;

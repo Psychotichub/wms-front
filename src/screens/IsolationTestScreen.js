@@ -184,7 +184,7 @@ const PanelTable = ({ panel, onUpdate, onDelete, totalPanels }) => {
               <Text style={[styles.panelName, { color: t.colors.text }]}>{panel.name}</Text>
             </Pressable>
           )}
-          <View style={[styles.badge, { backgroundColor: t.colors.primary + '18' }]}>
+          <View style={[styles.badge, { backgroundColor: t.colors.primary + '15' }]}>
             <Text style={[styles.badgeText, { color: t.colors.primary }]}>
               {rows.length} {rows.length === 1 ? 'cable' : 'cables'}
             </Text>
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
   container: { paddingBottom: 40 },
   header: { marginBottom: 16, marginTop: 8 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  title: { fontSize: 28, fontWeight: '800' },
+  title: { fontSize: 24, fontWeight: '700' },
   subtitle: { fontSize: 14, marginTop: 4 },
 
   savingBadge: {

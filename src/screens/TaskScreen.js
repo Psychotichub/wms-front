@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Pressable, FlatList, ScrollView } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Pressable, FlatList } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
@@ -9,6 +9,7 @@ import Button from '../components/ui/Button';
 import AutocompleteInput from '../components/ui/AutocompleteInput';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
+import AnimatedListItem from '../components/ui/AnimatedListItem';
 
 const TASK_ROW_HEIGHT = 80;
 
@@ -325,13 +326,15 @@ const TaskScreen = () => {
     navigation.navigate('Task Detail', { taskId });
   }, [navigation]);
 
-  const renderTaskItem = useCallback(({ item }) => (
-    <TaskRow
-      item={item}
-      colors={t.colors}
-      onEdit={handleEdit}
-      onViewDetails={handleViewDetails}
-    />
+  const renderTaskItem = useCallback(({ item, index }) => (
+    <AnimatedListItem index={index}>
+      <TaskRow
+        item={item}
+        colors={t.colors}
+        onEdit={handleEdit}
+        onViewDetails={handleViewDetails}
+      />
+    </AnimatedListItem>
   ), [t.colors, handleEdit, handleViewDetails]);
 
   const getItemLayout = useCallback((_, index) => ({
@@ -355,144 +358,220 @@ const TaskScreen = () => {
 
   return (
     <Screen>
-      <ScrollView style={[styles.container, { backgroundColor: t.colors.background }]}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: t.colors.text }]}>Task Management</Text>
-          <Pressable
-            style={[styles.addBtn, { backgroundColor: t.colors.primary }]}
-            onPress={() => {
-              if (!showForm) {
-                // When opening form for new task, set today's date
-                setFormData({
-                  title: '',
-                  description: '',
-                  assignedTo: '',
-                  priority: 'medium',
-                  dueDate: getTodayDate(),
-                  category: 'other',
-                  estimatedHours: '',
-                  notes: ''
-                });
-                setEditingId(null);
-              }
-              setShowForm(!showForm);
-            }}
-          >
-            <Ionicons name={showForm ? 'close' : 'add'} size={20} color="#fff" />
-            <Text style={styles.addBtnText}>{showForm ? 'Cancel' : 'New Task'}</Text>
-          </Pressable>
-        </View>
-
-        {message ? (
-          <View style={[styles.messageBox, { backgroundColor: getRGBA(t.colors.primary, 0.1) }]}>
-            <Text style={[styles.messageText, { color: t.colors.text }]}>{message}</Text>
-            <Pressable onPress={() => setMessage('')}>
-              <Ionicons name="close" size={18} color={t.colors.text} />
-            </Pressable>
-          </View>
-        ) : null}
-
-        {showForm && (
-          <View style={[styles.form, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}>
-            <Text style={[styles.formTitle, { color: t.colors.text }]}>
-              {editingId ? 'Edit Task' : 'Create New Task'}
-            </Text>
-
-            <Text style={[styles.label, { color: t.colors.text }]}>Title *</Text>
-            <TextInput
-              style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-              placeholder="Task title"
-              value={formData.title}
-              onChangeText={(text) => setFormData({ ...formData, title: text })}
-              placeholderTextColor={t.colors.textSecondary}
-            />
-
-            <Text style={[styles.label, { color: t.colors.text }]}>Description</Text>
-            <TextInput
-              style={[styles.input, styles.textArea, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-              placeholder="Task description"
-              value={formData.description}
-              onChangeText={(text) => setFormData({ ...formData, description: text })}
-              placeholderTextColor={t.colors.textSecondary}
-              multiline
-              numberOfLines={3}
-            />
-
-            <Text style={[styles.label, { color: t.colors.text }]}>Assign To *</Text>
-            <AutocompleteInput
-              data={employeeOptions}
-              value={formData.assignedTo ? employeeOptions.find(e => e.value === formData.assignedTo)?.label || '' : ''}
-              onChange={(text) => {
-                // Just update the display value, actual selection happens on onSelect
-                const found = employeeOptions.find(e => e.label.toLowerCase().includes(text.toLowerCase()));
-                if (found) {
-                  setFormData({ ...formData, assignedTo: found.value });
-                }
-              }}
-              onSelect={(item) => {
-                setFormData({ ...formData, assignedTo: item.value });
-              }}
-              placeholder="Select employee"
-              containerStyle={{ marginBottom: 12, zIndex: 1000, elevation: 1000 }}
-            />
-
-            <Text style={[styles.label, { color: t.colors.text }]}>Priority</Text>
-            <View style={styles.roleRow}>
-              {priorityOptions.map((option) => (
-                <Pressable
-                  key={option.value}
-                  style={[
-                    styles.roleChip,
-                    { borderColor: t.colors.border, backgroundColor: t.colors.card },
-                    formData.priority === option.value && {
-                      borderColor: getPriorityColor(option.value, t.colors),
-                      backgroundColor: getRGBA(getPriorityColor(option.value, t.colors), 0.1)
-                    }
-                  ]}
-                  onPress={() => setFormData({ ...formData, priority: option.value })}
-                >
-                  <Text
-                    style={[
-                      styles.roleText,
-                      { color: t.colors.text },
-                      formData.priority === option.value && { color: getPriorityColor(option.value, t.colors), fontWeight: '700' }
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              ))}
+      <FlatList
+        style={[styles.container, { backgroundColor: t.colors.background }]}
+        data={loading ? Array.from({ length: 4 }).map((_, idx) => ({ id: `task-skeleton-${idx}`, __skeleton: true })) : filteredTasks}
+        keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews
+        renderItem={renderTaskItem}
+        getItemLayout={getItemLayout}
+        ListHeaderComponent={
+          <>
+            <View style={styles.header}>
+              <Text style={[styles.title, { color: t.colors.text }]}>Task Management</Text>
+              <Pressable
+                style={[styles.addBtn, { backgroundColor: t.colors.primary }]}
+                onPress={() => {
+                  if (!showForm) {
+                    setFormData({
+                      title: '',
+                      description: '',
+                      assignedTo: '',
+                      priority: 'medium',
+                      dueDate: getTodayDate(),
+                      category: 'other',
+                      estimatedHours: '',
+                      notes: ''
+                    });
+                    setEditingId(null);
+                  }
+                  setShowForm(!showForm);
+                }}
+              >
+                <Ionicons name={showForm ? 'close' : 'add'} size={20} color="#fff" />
+                <Text style={styles.addBtnText}>{showForm ? 'Cancel' : 'New Task'}</Text>
+              </Pressable>
             </View>
 
-            <Text style={[styles.label, { color: t.colors.text }]}>Due Date</Text>
-            <TextInput
-              style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-              placeholder="YYYY-MM-DD"
-              value={formData.dueDate}
-              onChangeText={(text) => setFormData({ ...formData, dueDate: text })}
-              placeholderTextColor={t.colors.textSecondary}
+            {message ? (
+              <View style={[styles.messageBox, { backgroundColor: getRGBA(t.colors.primary, 0.1) }]}>
+                <Text style={[styles.messageText, { color: t.colors.text }]}>{message}</Text>
+                <Pressable onPress={() => setMessage('')}>
+                  <Ionicons name="close" size={18} color={t.colors.text} />
+                </Pressable>
+              </View>
+            ) : null}
+
+            {showForm && (
+              <View style={[styles.form, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}>
+                <Text style={[styles.formTitle, { color: t.colors.text }]}>
+                  {editingId ? 'Edit Task' : 'Create New Task'}
+                </Text>
+
+                <Text style={[styles.label, { color: t.colors.text }]}>Title *</Text>
+                <TextInput
+                  style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                  placeholder="Task title"
+                  value={formData.title}
+                  onChangeText={(text) => setFormData({ ...formData, title: text })}
+                  placeholderTextColor={t.colors.textSecondary}
+                />
+
+                <Text style={[styles.label, { color: t.colors.text }]}>Description</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                  placeholder="Task description"
+                  value={formData.description}
+                  onChangeText={(text) => setFormData({ ...formData, description: text })}
+                  placeholderTextColor={t.colors.textSecondary}
+                  multiline
+                  numberOfLines={3}
+                />
+
+                <Text style={[styles.label, { color: t.colors.text }]}>Assign To *</Text>
+                <AutocompleteInput
+                  data={employeeOptions}
+                  value={formData.assignedTo ? employeeOptions.find(e => e.value === formData.assignedTo)?.label || '' : ''}
+                  onChange={(text) => {
+                    const found = employeeOptions.find(e => e.label.toLowerCase().includes(text.toLowerCase()));
+                    if (found) {
+                      setFormData({ ...formData, assignedTo: found.value });
+                    }
+                  }}
+                  onSelect={(item) => {
+                    setFormData({ ...formData, assignedTo: item.value });
+                  }}
+                  placeholder="Select employee"
+                  containerStyle={{ marginBottom: 12, zIndex: 1000, elevation: 1000 }}
+                />
+
+                <Text style={[styles.label, { color: t.colors.text }]}>Priority</Text>
+                <View style={styles.roleRow}>
+                  {priorityOptions.map((option) => (
+                    <Pressable
+                      key={option.value}
+                      style={[
+                        styles.roleChip,
+                        { borderColor: t.colors.border, backgroundColor: t.colors.card },
+                        formData.priority === option.value && {
+                          borderColor: getPriorityColor(option.value, t.colors),
+                          backgroundColor: getRGBA(getPriorityColor(option.value, t.colors), 0.1)
+                        }
+                      ]}
+                      onPress={() => setFormData({ ...formData, priority: option.value })}
+                    >
+                      <Text
+                        style={[
+                          styles.roleText,
+                          { color: t.colors.text },
+                          formData.priority === option.value && { color: getPriorityColor(option.value, t.colors), fontWeight: '700' }
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <Text style={[styles.label, { color: t.colors.text }]}>Due Date</Text>
+                <TextInput
+                  style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                  placeholder="YYYY-MM-DD"
+                  value={formData.dueDate}
+                  onChangeText={(text) => setFormData({ ...formData, dueDate: text })}
+                  placeholderTextColor={t.colors.textSecondary}
+                />
+
+                <Text style={[styles.label, { color: t.colors.text }]}>Category</Text>
+                <View style={styles.roleRow}>
+                  {categoryOptions.map((option) => (
+                    <Pressable
+                      key={option.value}
+                      style={[
+                        styles.roleChip,
+                        { borderColor: t.colors.border, backgroundColor: t.colors.card },
+                        formData.category === option.value && {
+                          borderColor: t.colors.primary,
+                          backgroundColor: getRGBA(t.colors.primary, 0.1)
+                        }
+                      ]}
+                      onPress={() => setFormData({ ...formData, category: option.value })}
+                    >
+                      <Text
+                        style={[
+                          styles.roleText,
+                          { color: t.colors.text },
+                          formData.category === option.value && { color: t.colors.primary, fontWeight: '700' }
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <Text style={[styles.label, { color: t.colors.text }]}>Estimated Hours</Text>
+                <TextInput
+                  style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                  placeholder="e.g., 2.5"
+                  value={formData.estimatedHours}
+                  onChangeText={(text) => setFormData({ ...formData, estimatedHours: text })}
+                  placeholderTextColor={t.colors.textSecondary}
+                  keyboardType="numeric"
+                />
+
+                <Text style={[styles.label, { color: t.colors.text }]}>Notes</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                  placeholder="Additional notes"
+                  value={formData.notes}
+                  onChangeText={(text) => setFormData({ ...formData, notes: text })}
+                  placeholderTextColor={t.colors.textSecondary}
+                  multiline
+                  numberOfLines={2}
+                />
+
+                <View style={styles.formActions}>
+                  <Button title="Cancel" onPress={resetForm} variant="secondary" />
+                  <Button title={editingId ? 'Update Task' : 'Create Task'} onPress={handleSubmit} />
+                </View>
+              </View>
+            )}
+
+            <Text style={[styles.sectionTitle, { color: t.colors.text }]}>Search Tasks</Text>
+            <AutocompleteInput
+              data={filteredTasks.map(t => t.title)}
+              value={searchValue}
+              onChange={setSearchValue}
+              onSelect={(item) => setSearchValue(item.label)}
+              placeholder="Search by title, description, or employee"
+              containerStyle={{ marginBottom: 12 }}
             />
 
-            <Text style={[styles.label, { color: t.colors.text }]}>Category</Text>
+            <Text style={[styles.sectionTitle, { color: t.colors.text }]}>Filter by Status</Text>
             <View style={styles.roleRow}>
-              {categoryOptions.map((option) => (
+              {statusOptions.map((option) => (
                 <Pressable
                   key={option.value}
                   style={[
                     styles.roleChip,
                     { borderColor: t.colors.border, backgroundColor: t.colors.card },
-                    formData.category === option.value && {
+                    statusFilter === option.value && {
                       borderColor: t.colors.primary,
                       backgroundColor: getRGBA(t.colors.primary, 0.1)
                     }
                   ]}
-                  onPress={() => setFormData({ ...formData, category: option.value })}
+                  onPress={() => setStatusFilter(option.value)}
                 >
                   <Text
                     style={[
                       styles.roleText,
                       { color: t.colors.text },
-                      formData.category === option.value && { color: t.colors.primary, fontWeight: '700' }
+                      statusFilter === option.value && { color: t.colors.primary, fontWeight: '700' }
                     ]}
                   >
                     {option.label}
@@ -501,106 +580,28 @@ const TaskScreen = () => {
               ))}
             </View>
 
-            <Text style={[styles.label, { color: t.colors.text }]}>Estimated Hours</Text>
-            <TextInput
-              style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-              placeholder="e.g., 2.5"
-              value={formData.estimatedHours}
-              onChangeText={(text) => setFormData({ ...formData, estimatedHours: text })}
-              placeholderTextColor={t.colors.textSecondary}
-              keyboardType="numeric"
+            <Text style={[styles.sectionTitle, { color: t.colors.text }]}>
+              Tasks ({filteredTasks.length})
+            </Text>
+          </>
+        }
+        ListEmptyComponent={
+          !loading ? (
+            <EmptyState
+              icon="checkmark-done-outline"
+              title="No tasks yet"
+              subtitle="Create a task to assign work to employees."
             />
-
-            <Text style={[styles.label, { color: t.colors.text }]}>Notes</Text>
-            <TextInput
-              style={[styles.input, styles.textArea, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-              placeholder="Additional notes"
-              value={formData.notes}
-              onChangeText={(text) => setFormData({ ...formData, notes: text })}
-              placeholderTextColor={t.colors.textSecondary}
-              multiline
-              numberOfLines={2}
-            />
-
-            <View style={styles.formActions}>
-              <Button title="Cancel" onPress={resetForm} variant="secondary" />
-              <Button title={editingId ? 'Update Task' : 'Create Task'} onPress={handleSubmit} />
-            </View>
-          </View>
-        )}
-
-        <Text style={[styles.sectionTitle, { color: t.colors.text }]}>Search Tasks</Text>
-        <AutocompleteInput
-          data={filteredTasks.map(t => t.title)}
-          value={searchValue}
-          onChange={setSearchValue}
-          onSelect={(item) => setSearchValue(item.label)}
-          placeholder="Search by title, description, or employee"
-          containerStyle={{ marginBottom: 12 }}
-        />
-
-        <Text style={[styles.sectionTitle, { color: t.colors.text }]}>Filter by Status</Text>
-        <View style={styles.roleRow}>
-          {statusOptions.map((option) => (
-            <Pressable
-              key={option.value}
-              style={[
-                styles.roleChip,
-                { borderColor: t.colors.border, backgroundColor: t.colors.card },
-                statusFilter === option.value && {
-                  borderColor: t.colors.primary,
-                  backgroundColor: getRGBA(t.colors.primary, 0.1)
-                }
-              ]}
-              onPress={() => setStatusFilter(option.value)}
-            >
-              <Text
-                style={[
-                  styles.roleText,
-                  { color: t.colors.text },
-                  statusFilter === option.value && { color: t.colors.primary, fontWeight: '700' }
-                ]}
-              >
-                {option.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={[styles.sectionTitle, { color: t.colors.text }]}>
-          Tasks ({filteredTasks.length})
-        </Text>
-
-        <FlatList
-          data={loading ? Array.from({ length: 4 }).map((_, idx) => ({ id: `task-skeleton-${idx}`, __skeleton: true })) : filteredTasks}
-          keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
-          scrollEnabled={false}
-          contentContainerStyle={styles.taskList}
-          initialNumToRender={6}
-          maxToRenderPerBatch={6}
-          windowSize={7}
-          removeClippedSubviews
-          renderItem={renderTaskItem}
-          getItemLayout={getItemLayout}
-          ListEmptyComponent={
-            !loading ? (
-              <EmptyState
-                icon="checkmark-done-outline"
-                title="No tasks yet"
-                subtitle="Create a task to assign work to employees."
-              />
-            ) : null
-          }
-        />
-      </ScrollView>
+          ) : null
+        }
+      />
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    paddingBottom: 32
+    flex: 1
   },
   header: {
     flexDirection: 'row',

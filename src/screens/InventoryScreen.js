@@ -145,14 +145,7 @@ const InventoryScreen = () => {
             />
           </View>
 
-          {displayInventory.length === 0 && !loading ? (
-            <EmptyState
-              icon="cube-outline"
-              title="No inventory found"
-              subtitle={searchValue ? "Try a different search term" : "No materials have been received yet"}
-            />
-          ) : (
-            <View style={[styles.table, { borderColor: t.colors.border }]}>
+          <View style={[styles.table, { borderColor: t.colors.border }]}>
               <FlatList
                 data={displayInventory}
                 scrollEnabled={false}
@@ -178,6 +171,15 @@ const InventoryScreen = () => {
                     <Text style={[styles.cell, styles.headerCell, styles.statusCell, { color: t.colors.text }]}>Status</Text>
                   </View>
                 }
+                ListEmptyComponent={
+                  !loading ? (
+                    <EmptyState
+                      icon="cube-outline"
+                      title="No inventory found"
+                      subtitle={searchValue ? "Try a different search term" : "No materials have been received yet"}
+                    />
+                  ) : null
+                }
                 renderItem={({ item }) => (
                   <InventoryRow
                     item={item}
@@ -186,7 +188,6 @@ const InventoryScreen = () => {
                 )}
               />
             </View>
-          )}
         </View>
       </View>
     </Screen>
@@ -198,7 +199,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     marginBottom: 12
   },
@@ -224,29 +225,24 @@ const styles = StyleSheet.create({
   },
   table: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
     borderRadius: 8,
     overflow: 'hidden'
   },
   row: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderColor: '#e5e7eb',
     alignItems: 'center',
     minHeight: INVENTORY_ROW_HEIGHT
   },
   headerRow: {
-    backgroundColor: '#f3f4f6'
   },
   cell: {
     flex: 1,
     paddingVertical: 10,
-    paddingHorizontal: 8,
-    color: '#111827'
+    paddingHorizontal: 8
   },
   headerCell: {
-    fontWeight: '700',
-    color: '#374151'
+    fontWeight: '700'
   },
   materialCell: {
     flex: 1.5,

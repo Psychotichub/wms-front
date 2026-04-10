@@ -4,10 +4,12 @@ import { View, Text, StyleSheet } from 'react-native';
 import AppProviders from './src/providers/AppProviders';
 import RootNavigator from './src/navigation/RootNavigator';
 import { validateRequiredConfig } from './src/config/runtime';
+import { initSentry, captureException } from './src/config/sentry';
 // Import background location task to register it
 import './src/tasks/backgroundLocationTask';
 
-// Error Boundary Component
+initSentry();
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -19,6 +21,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
+    captureException(error, { componentStack: errorInfo?.componentStack });
     console.error('App Error:', error, errorInfo);
   }
 

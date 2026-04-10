@@ -337,64 +337,57 @@ const ReceivedScreen = () => {
           </Pressable>
         </View>
 
-        {loading || records.length > 0 ? (
-          <>
-            <Text style={[styles.tableTitle, { color: t.colors.text }]}>Receipt History</Text>
-            <View style={[styles.table, { borderColor: t.colors.border }]}>
-              <FlatList
-                data={loading ? Array.from({ length: 5 }).map((_, idx) => ({ id: `receipt-skeleton-${idx}`, __skeleton: true })) : filteredRecords}
-                keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
-                scrollEnabled={false}
-                initialNumToRender={6}
-                maxToRenderPerBatch={6}
-                windowSize={7}
-                removeClippedSubviews
-                ListHeaderComponent={
-                  <View style={[styles.row, styles.headerRow, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}>
-                    <Text style={[styles.cell, styles.headerCell, { color: t.colors.text }]}>Material</Text>
-                    <Text style={[styles.cell, styles.headerCell, { color: t.colors.text }]}>Qty</Text>
-                    <Text style={[styles.cell, styles.headerCell, { color: t.colors.text }]}>Notes</Text>
-                    <Text style={[styles.cell, styles.headerCell, { color: t.colors.text }]}>Action</Text>
-                  </View>
-                }
-                renderItem={renderReceiptItem}
-                getItemLayout={getItemLayout}
-              />
-            </View>
-            {!loading && filteredRecords.length > 0 && (
-              <View style={styles.exportContainer}>
-                <Pressable
-                  style={[styles.exportButton, { backgroundColor: getRGBA(t.colors.danger, 0.1), borderColor: t.colors.danger }]}
-                  onPress={handleExportPDF}
-                >
-                  <Ionicons name="document-text-outline" size={20} color={t.colors.danger} />
-                  <Text style={[styles.exportButtonText, { color: t.colors.danger }]}>Export PDF</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.exportButton, { backgroundColor: getRGBA(t.colors.success, 0.1), borderColor: t.colors.success }]}
-                  onPress={handleExportExcel}
-                >
-                  <Ionicons name="document-outline" size={20} color={t.colors.success} />
-                  <Text style={[styles.exportButtonText, { color: t.colors.success }]}>Export Excel</Text>
-                </Pressable>
+        {(loading || records.length > 0) && (
+          <Text style={[styles.tableTitle, { color: t.colors.text }]}>Receipt History</Text>
+        )}
+
+        <View style={[styles.table, { borderColor: t.colors.border }]}>
+          <FlatList
+            data={loading ? Array.from({ length: 5 }).map((_, idx) => ({ id: `receipt-skeleton-${idx}`, __skeleton: true })) : filteredRecords}
+            keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
+            scrollEnabled={false}
+            initialNumToRender={6}
+            maxToRenderPerBatch={6}
+            windowSize={7}
+            removeClippedSubviews
+            ListHeaderComponent={
+              <View style={[styles.row, styles.headerRow, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}>
+                <Text style={[styles.cell, styles.headerCell, { color: t.colors.text }]}>Material</Text>
+                <Text style={[styles.cell, styles.headerCell, { color: t.colors.text }]}>Qty</Text>
+                <Text style={[styles.cell, styles.headerCell, { color: t.colors.text }]}>Notes</Text>
+                <Text style={[styles.cell, styles.headerCell, { color: t.colors.text }]}>Action</Text>
               </View>
-            )}
-            {!loading && filteredRecords.length === 0 ? (
-              <EmptyState
-                icon="calendar-outline"
-                title="No receipts for this date"
-                subtitle="Try a different date or add a new receipt."
-              />
-            ) : null}
-          </>
-        ) : (
-          !loading ? (
-            <EmptyState
-              icon="cube-outline"
-              title="No receipts yet"
-              subtitle="Add your first receipt to see it here."
-            />
-          ) : null
+            }
+            ListEmptyComponent={
+              !loading ? (
+                <EmptyState
+                  icon={records.length === 0 ? "cube-outline" : "calendar-outline"}
+                  title={records.length === 0 ? "No receipts yet" : "No receipts for this date"}
+                  subtitle={records.length === 0 ? "Add your first receipt to see it here." : "Try a different date or add a new receipt."}
+                />
+              ) : null
+            }
+            renderItem={renderReceiptItem}
+            getItemLayout={getItemLayout}
+          />
+        </View>
+        {!loading && filteredRecords.length > 0 && (
+          <View style={styles.exportContainer}>
+            <Pressable
+              style={[styles.exportButton, { backgroundColor: getRGBA(t.colors.danger, 0.1), borderColor: t.colors.danger }]}
+              onPress={handleExportPDF}
+            >
+              <Ionicons name="document-text-outline" size={20} color={t.colors.danger} />
+              <Text style={[styles.exportButtonText, { color: t.colors.danger }]}>Export PDF</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.exportButton, { backgroundColor: getRGBA(t.colors.success, 0.1), borderColor: t.colors.success }]}
+              onPress={handleExportExcel}
+            >
+              <Ionicons name="document-outline" size={20} color={t.colors.success} />
+              <Text style={[styles.exportButtonText, { color: t.colors.success }]}>Export Excel</Text>
+            </Pressable>
+          </View>
         )}
       </View>
     </Screen>
@@ -403,7 +396,7 @@ const ReceivedScreen = () => {
 
 const styles = StyleSheet.create({
   container: { paddingBottom: 32 },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 12 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 12 },
   label: { marginBottom: 6, fontWeight: '600' },
   input: {
     borderWidth: 1,

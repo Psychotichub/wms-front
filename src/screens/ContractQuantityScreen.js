@@ -376,14 +376,7 @@ const ContractQuantityScreen = () => {
             />
           </View>
 
-          {displayContracts.length === 0 && !loading ? (
-            <EmptyState
-              icon="document-outline"
-              title="No contracts found"
-              subtitle={searchValue ? "Try a different search term" : "Add a contract to get started"}
-            />
-          ) : (
-            <View style={[styles.table, { borderColor: t.colors.border }]}>
+          <View style={[styles.table, { borderColor: t.colors.border }]}>
               <FlatList
                 data={displayContracts}
                 scrollEnabled={false}
@@ -410,6 +403,15 @@ const ContractQuantityScreen = () => {
                     {isAdmin && <Text style={[styles.cell, styles.headerCell, styles.actionCell, { color: t.colors.text }]}>Actions</Text>}
                   </View>
                 }
+                ListEmptyComponent={
+                  !loading ? (
+                    <EmptyState
+                      icon="document-outline"
+                      title="No contracts found"
+                      subtitle={searchValue ? "Try a different search term" : "Add a contract to get started"}
+                    />
+                  ) : null
+                }
                 renderItem={({ item }) => (
                   <ContractRow
                     item={item}
@@ -421,7 +423,6 @@ const ContractQuantityScreen = () => {
                 )}
               />
             </View>
-          )}
         </View>
       </View>
     </Screen>
@@ -433,22 +434,19 @@ const styles = StyleSheet.create({
     paddingBottom: 32
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     marginBottom: 12
   },
   label: {
     marginBottom: 6,
-    color: '#374151',
     fontWeight: '600'
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
-    backgroundColor: '#fff',
     fontSize: 16
   },
   submitButton: {
@@ -484,29 +482,23 @@ const styles = StyleSheet.create({
   },
   table: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
     borderRadius: 8,
     overflow: 'hidden'
   },
   row: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderColor: '#e5e7eb',
     alignItems: 'center',
     minHeight: CONTRACT_ROW_HEIGHT
   },
-  headerRow: {
-    backgroundColor: '#f3f4f6'
-  },
+  headerRow: {},
   cell: {
     flex: 1,
     paddingVertical: 10,
-    paddingHorizontal: 8,
-    color: '#111827'
+    paddingHorizontal: 8
   },
   headerCell: {
-    fontWeight: '700',
-    color: '#374151'
+    fontWeight: '700'
   },
   materialCell: {
     flex: 1.5,
@@ -535,12 +527,9 @@ const styles = StyleSheet.create({
   actionBtn: {
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: 6,
-    backgroundColor: '#e0f2fe'
+    borderRadius: 6
   },
-  deleteBtn: {
-    backgroundColor: '#fee2e2'
-  }
+  deleteBtn: {}
 });
 
 export default ContractQuantityScreen;

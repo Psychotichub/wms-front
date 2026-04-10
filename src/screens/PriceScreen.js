@@ -279,7 +279,7 @@ const PriceScreen = () => {
 
 const styles = StyleSheet.create({
   container: { paddingBottom: 40 },
-  title: { fontSize: 26, fontWeight: '800', marginBottom: 20 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 20 },
   label: { marginBottom: 6, fontWeight: '600' },
   filterSection: { marginBottom: 24, overflow: 'visible' },
   sectionTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 12 },

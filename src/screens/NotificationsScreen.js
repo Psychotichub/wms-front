@@ -15,6 +15,7 @@ import { useThemeTokens } from '../theme/ThemeProvider';
 import { useNotifications } from '../context/NotificationContext';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
+import AnimatedListItem from '../components/ui/AnimatedListItem';
 import { navigateFromNotification } from '../utils/notificationNavigation';
 
 const NOTIFICATION_ITEM_HEIGHT = 120;
@@ -103,7 +104,7 @@ const NotificationItem = React.memo(({ item, colors, onPress }) => {
 
   return (
     <Pressable
-      style={[
+      style={({ pressed }) => [
         styles.notificationCard,
         {
           backgroundColor: getRGBA(colors.card, 0.5),
@@ -112,7 +113,8 @@ const NotificationItem = React.memo(({ item, colors, onPress }) => {
         item.status !== 'read' && {
           borderLeftColor: color,
           borderLeftWidth: 4
-        }
+        },
+        pressed && { opacity: 0.85 }
       ]}
       onPress={() => onPress(item)}
     >
@@ -210,8 +212,10 @@ const NotificationsScreen = () => {
   }, [markAsRead]);
 
   const renderItem = useCallback(
-    ({ item }) => (
-      <NotificationItem item={item} colors={t.colors} onPress={handleNotificationPress} />
+    ({ item, index }) => (
+      <AnimatedListItem index={index}>
+        <NotificationItem item={item} colors={t.colors} onPress={handleNotificationPress} />
+      </AnimatedListItem>
     ),
     [handleNotificationPress, t.colors]
   );
@@ -377,23 +381,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyMessage: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 20,
   },
 });
 

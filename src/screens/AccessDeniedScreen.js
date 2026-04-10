@@ -25,7 +25,7 @@ const AccessDeniedScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48 },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 8 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 8 },
   subtitle: { fontSize: 14, textAlign: 'center', marginBottom: 20 },
   button: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 },
   buttonText: { color: '#0b1220', fontWeight: '700' }

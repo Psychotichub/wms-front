@@ -282,6 +282,7 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
           longitude: location.coords.longitude,
           timestamp: new Date().toISOString(),
           accuracy: location.coords.accuracy,
+          isAutomatic: true,
           deviceInfo
         };
 

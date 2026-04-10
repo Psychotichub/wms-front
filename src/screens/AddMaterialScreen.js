@@ -328,7 +328,7 @@ const AddMaterialScreen = () => {
 
 const styles = StyleSheet.create({
   container: { paddingBottom: 32 },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 12 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 12 },
   label: { marginBottom: 6, fontWeight: '600' },
   unitRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   unitChip: {

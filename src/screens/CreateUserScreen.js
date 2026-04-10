@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   headerRight: {
     width: 40
   },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 12 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 12 },
   input: {
     borderWidth: 1,
     borderRadius: 8,
