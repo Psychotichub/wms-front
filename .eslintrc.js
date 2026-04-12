@@ -24,6 +24,16 @@ module.exports = {
       rules: {
         'import/no-unresolved': 'off'
       }
+    },
+    {
+      files: [
+        'src/navigation/routeConfig.ts',
+        'src/utils/exportUtils.ts',
+        'src/utils/storage.ts'
+      ],
+      rules: {
+        '@typescript-eslint/no-require-imports': 'off'
+      }
     }
   ],
   ignorePatterns: [

@@ -1,0 +1,351 @@
+// @ts-nocheck
+import React, { useCallback, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View, FlatList } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import Screen from '../components/Screen';
+import SiteRequiredNotice from '../components/SiteRequiredNotice';
+import { useAuth } from '../context/AuthContext';
+import { useThemeTokens } from '../theme/ThemeProvider';
+import { useI18n } from '../i18n/I18nProvider';
+import Button from '../components/ui/Button';
+import AutocompleteInput from '../components/ui/AutocompleteInput';
+import EmptyState from '../components/ui/EmptyState';
+import SkeletonBar from '../components/ui/SkeletonBar';
+
+const PANEL_ROW_HEIGHT = 44;
+const PANEL_GROUP_HEADER_HEIGHT = 24;
+const PANEL_TABLE_HEADER_HEIGHT = 44;
+const PANEL_GROUP_GAP = 12;
+
+// Helper to convert hex to RGBA for web compatibility
+const getRGBA = (hex, alpha) => {
+  if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) return hex;
+  let fullHex = hex;
+  if (hex.length === 4) {
+    fullHex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+  }
+  const r = parseInt(fullHex.slice(1, 3), 16);
+  const g = parseInt(fullHex.slice(3, 5), 16);
+  const b = parseInt(fullHex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const PanelGroupItem = React.memo(({ item, colors, onEdit, onDelete, tr }) => {
+  if (item.__skeleton) {
+    return (
+      <View style={styles.tableGroup}>
+        <SkeletonBar width="40%" height={14} style={{ marginBottom: 8 }} />
+        <View style={[styles.table, { borderColor: colors.border }]}>
+          <View style={[styles.row, styles.headerRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.cell, styles.headerCell, { color: colors.text }]}>{tr('panel.colCircuit')}</Text>
+            <Text style={[styles.cell, styles.headerCell, { color: colors.text }]}>{tr('panel.colCableSize')}</Text>
+            <Text style={[styles.cell, styles.headerCell, { color: colors.text }]}>{tr('panel.colAction')}</Text>
+          </View>
+          {Array.from({ length: 3 }).map((__, rowIdx) => (
+            <View key={`panel-skeleton-row-${item.id}-${rowIdx}`} style={[styles.row, { borderColor: colors.border }]}>
+              <View style={styles.cell}><SkeletonBar width="60%" height={12} /></View>
+              <View style={styles.cell}><SkeletonBar width="50%" height={12} /></View>
+              <View style={[styles.cell, styles.actionCell]}>
+                <SkeletonBar width={24} height={12} />
+                <SkeletonBar width={24} height={12} />
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  const [panelName, items] = item;
+
+  return (
+    <View style={styles.tableGroup}>
+      <Text style={[styles.groupHeader, { color: colors.text }]}>{panelName}</Text>
+      <View style={[styles.table, { borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.row,
+            styles.headerRow,
+            { backgroundColor: colors.card, borderColor: colors.border }
+          ]}
+        >
+          <Text style={[styles.cell, styles.headerCell, { color: colors.text }]}>{tr('panel.colCircuit')}</Text>
+          <Text style={[styles.cell, styles.headerCell, { color: colors.text }]}>{tr('panel.colCableSize')}</Text>
+          <Text style={[styles.cell, styles.headerCell, { color: colors.text }]}>{tr('panel.colAction')}</Text>
+        </View>
+        {items.map((panelItem) => (
+          <View key={panelItem._id} style={[styles.row, { borderColor: colors.border }]}>
+            <Text style={[styles.cell, { color: colors.text }]}>{panelItem.circuit}</Text>
+            <Text style={[styles.cell, { color: colors.textSecondary }]}>{panelItem.cableSize || tr('panel.dashEmpty')}</Text>
+            <View style={[styles.cell, styles.actionCell]}>
+              <Pressable style={[styles.actionBtn, { backgroundColor: getRGBA(colors.primary, 0.12) }]} onPress={() => onEdit(panelItem)}>
+                <Ionicons name="create-outline" size={18} color={colors.primary} />
+              </Pressable>
+              <Pressable style={[styles.actionBtn, styles.deleteBtn, { backgroundColor: getRGBA(colors.danger, 0.12) }]} onPress={() => onDelete(panelItem._id)}>
+                <Ionicons name="trash-outline" size={18} color={colors.danger} />
+              </Pressable>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+});
+PanelGroupItem.displayName = 'PanelGroupItem';
+
+const PanelScreen = () => {
+  const { request, user } = useAuth();
+  const t = useThemeTokens();
+  const { t: tr } = useI18n();
+  const hasSite = Boolean(user?.site);
+
+  const [name, setName] = useState('');
+  const [circuit, setCircuit] = useState('');
+  const [cableSize, setCableSize] = useState('');
+  const [panels, setPanels] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
+
+  const loadPanels = useCallback(async () => {
+    if (!hasSite) {
+      setPanels([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await request('/api/panels');
+      setPanels(data.panels || []);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [hasSite, request]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (hasSite) {
+        loadPanels();
+      }
+    }, [hasSite, loadPanels])
+  );
+
+  const filteredPanels = useMemo(() => {
+    if (!searchValue) return panels;
+    const needle = searchValue.toLowerCase();
+    return panels.filter((p) => (p.name || '').toLowerCase().includes(needle));
+  }, [panels, searchValue]);
+
+  const groupedPanels = useMemo(() => {
+    const groups = filteredPanels.reduce((acc, panel) => {
+      const key = panel.name || tr('panel.untitled');
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(panel);
+      return acc;
+    }, {});
+
+    // Sort circuits inside each panel group ascending
+    Object.keys(groups).forEach((key) => {
+      groups[key].sort((a, b) => String(a.circuit || '').localeCompare(String(b.circuit || '')));
+    });
+
+    // Return entries sorted by panel name for stable render
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [filteredPanels, tr]);
+
+  const handleSubmit = async () => {
+    setMessage('');
+    try {
+      const payload = { name, circuit, cableSize };
+      if (editingId) {
+        await request(`/api/panels/${editingId}`, { method: 'PUT', body: JSON.stringify(payload) });
+      } else {
+        await request('/api/panels', { method: 'POST', body: JSON.stringify(payload) });
+      }
+      setName('');
+      setCircuit('');
+      setCableSize('');
+      setEditingId(null);
+      setMessage('Panel saved');
+      loadPanels();
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+
+  const handleEdit = useCallback((panel) => {
+    setEditingId(panel._id);
+    setName(panel.name || '');
+    setCircuit(panel.circuit || '');
+    setCableSize(panel.cableSize || '');
+    setMessage('');
+  }, []);
+
+  const handleDelete = useCallback(async (id) => {
+    setMessage('');
+    try {
+      await request(`/api/panels/${id}`, { method: 'DELETE' });
+      if (editingId === id) {
+        setEditingId(null);
+        setName('');
+        setCircuit('');
+        setCableSize('');
+      }
+      loadPanels();
+    } catch (err) {
+      setMessage(err.message);
+    }
+  }, [editingId, loadPanels, request]);
+
+  const panelListData = useMemo(
+    () => (loading ? Array.from({ length: 3 }).map((_, idx) => ({ id: `panel-skeleton-${idx}`, __skeleton: true })) : groupedPanels),
+    [groupedPanels, loading]
+  );
+
+  const groupHeights = useMemo(() => panelListData.map((item) => {
+    const rowCount = item.__skeleton ? 3 : item[1]?.length || 0;
+    return PANEL_GROUP_HEADER_HEIGHT + PANEL_TABLE_HEADER_HEIGHT + rowCount * PANEL_ROW_HEIGHT + PANEL_GROUP_GAP;
+  }), [panelListData]);
+
+  const groupOffsets = useMemo(() => {
+    const offsets = [];
+    let offset = 0;
+    groupHeights.forEach((height) => {
+      offsets.push(offset);
+      offset += height;
+    });
+    return offsets;
+  }, [groupHeights]);
+
+  const renderPanelGroup = useCallback(
+    ({ item }) => (
+      <PanelGroupItem
+        item={item}
+        colors={t.colors}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        tr={tr}
+      />
+    ),
+    [handleDelete, handleEdit, t.colors, tr]
+  );
+
+  const getItemLayout = useCallback(
+    (_, index) => ({
+      length: groupHeights[index] ?? PANEL_GROUP_HEADER_HEIGHT + PANEL_TABLE_HEADER_HEIGHT + PANEL_GROUP_GAP,
+      offset: groupOffsets[index] ?? 0,
+      index
+    }),
+    [groupHeights, groupOffsets]
+  );
+
+  if (!hasSite) {
+    return (
+      <Screen>
+        <SiteRequiredNotice />
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen>
+      <View style={styles.container}>
+        <Text style={[styles.title, { color: t.colors.text }]}>{tr('panel.screenTitle')}</Text>
+        <Text style={[styles.label, { color: t.colors.textSecondary }]}>{tr('panel.labelPanelName')}</Text>
+        <AutocompleteInput
+          data={Array.from(new Set(panels.map((p) => p.name)))}
+          value={name}
+          onChange={setName}
+          onSelect={(item) => setName(item.label)}
+          placeholder="Panel name"
+          containerStyle={{ marginBottom: 12 }}
+        />
+        <Text style={[styles.label, { color: t.colors.textSecondary }]}>{tr('panel.labelCircuit')}</Text>
+        <TextInput
+          style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+          placeholder={tr('panel.circuitPlaceholder')}
+          value={circuit}
+          onChangeText={setCircuit}
+          placeholderTextColor={t.colors.textSecondary}
+        />
+        <Text style={[styles.label, { color: t.colors.textSecondary }]}>{tr('panel.labelCableSize')}</Text>
+        <TextInput
+          style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+          placeholder={tr('panel.cablePlaceholder')}
+          value={cableSize}
+          onChangeText={setCableSize}
+          placeholderTextColor={t.colors.textSecondary}
+        />
+        <Button title={editingId ? tr('panel.updatePanel') : tr('panel.savePanel')} onPress={handleSubmit} />
+        {message ? <Text style={[styles.message, { color: t.colors.text }]}>{message}</Text> : null}
+
+        {(loading || panels.length > 0) && (
+          <>
+            <Text style={[styles.label, { color: t.colors.textSecondary }]}>{tr('panel.labelSearch')}</Text>
+            <AutocompleteInput
+              data={Array.from(new Set(panels.map((p) => p.name)))}
+              value={searchValue}
+              onChange={setSearchValue}
+              onSelect={(item) => setSearchValue(item.label)}
+              placeholder={tr('panel.searchPlaceholder')}
+              containerStyle={{ marginBottom: 12 }}
+            />
+            <Text style={[styles.tableTitle, { color: t.colors.text }]}>{tr('panel.tableTitle')}</Text>
+          </>
+        )}
+
+        <FlatList
+          data={panelListData}
+          keyExtractor={(item) => (item.__skeleton ? item.id : item[0])}
+          scrollEnabled={false}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={7}
+          removeClippedSubviews
+          renderItem={renderPanelGroup}
+          getItemLayout={getItemLayout}
+          ListEmptyComponent={
+            !loading ? (
+              <EmptyState
+                icon="git-branch-outline"
+                title={panels.length === 0 ? tr('panel.emptyTitle') : tr('panel.emptySearchTitle')}
+                subtitle={panels.length === 0 ? tr('panel.emptySubtitle') : tr('panel.emptySearchSubtitle')}
+              />
+            ) : null
+          }
+        />
+      </View>
+    </Screen>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: { paddingBottom: 32 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 12 },
+  label: { marginBottom: 6, fontWeight: '600' },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12
+  },
+  message: { marginTop: 8 },
+  tableTitle: { marginTop: 16, marginBottom: 8, fontSize: 18, fontWeight: '700' },
+  table: { borderWidth: 1, borderRadius: 8, overflow: 'hidden' },
+  row: { flexDirection: 'row', borderBottomWidth: 1, alignItems: 'center', minHeight: PANEL_ROW_HEIGHT },
+  headerRow: {},
+  cell: { flex: 1, paddingVertical: 10, paddingHorizontal: 8 },
+  headerCell: { fontWeight: '700' },
+  actionCell: { flexDirection: 'row', gap: 8 },
+  actionBtn: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6 },
+  actionText: { fontWeight: '600' },
+  deleteBtn: {},
+  deleteText: {},
+  muted: { marginBottom: 8 }
+});
+
+export default PanelScreen;
+
