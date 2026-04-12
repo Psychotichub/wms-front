@@ -15,6 +15,7 @@ const AuthStack = () => {
   return (
     <Stack.Navigator
       screenOptions={{
+        contentStyle: { backgroundColor: 'transparent' },
         headerStyle: {
           backgroundColor: t.colors.surface,
           borderBottomColor: t.colors.border,

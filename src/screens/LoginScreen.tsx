@@ -205,7 +205,7 @@ const LoginScreen = ({ navigation }) => {
           styles.animatedBackground,
           {
             opacity: backgroundOpacity,
-            backgroundColor: t.colors.background,
+            backgroundColor: 'transparent',
           }
         ]}
       />

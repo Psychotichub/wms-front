@@ -292,7 +292,7 @@ const MyTasksScreen = () => {
 
   return (
     <Screen>
-      <ScrollView style={[styles.container, { backgroundColor: t.colors.background }]}>
+      <ScrollView style={[styles.container, { backgroundColor: 'transparent' }]}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: t.colors.text }]}>{tr('myTasks.screenTitle')}</Text>
         </View>

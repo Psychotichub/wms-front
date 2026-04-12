@@ -385,7 +385,7 @@ const TaskScreen = () => {
   return (
     <Screen>
       <FlatList
-        style={[styles.container, { backgroundColor: t.colors.background }]}
+        style={[styles.container, { backgroundColor: 'transparent' }]}
         data={loading ? Array.from({ length: 4 }).map((_, idx) => ({ id: `task-skeleton-${idx}`, __skeleton: true })) : filteredTasks}
         keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
         contentContainerStyle={{ paddingBottom: 32 }}

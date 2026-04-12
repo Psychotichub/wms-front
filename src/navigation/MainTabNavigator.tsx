@@ -17,6 +17,7 @@ export default function MainTabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
+        sceneContainerStyle: { backgroundColor: 'transparent' },
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textSecondary,

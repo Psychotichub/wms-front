@@ -650,7 +650,7 @@ const LocationSelectionScreen = ({ navigation }) => {
             })}
               </GeofenceMap>
             ) : (
-              <View style={[styles.mapPlaceholder, { backgroundColor: t.colors.background }]}>
+              <View style={[styles.mapPlaceholder, { backgroundColor: 'transparent' }]}>
                 <EmptyState
                   icon="map-outline"
                   title={tr('locations.select.emptyMapTitle')}
@@ -662,7 +662,7 @@ const LocationSelectionScreen = ({ navigation }) => {
         </View>
 
         {/* Location List */}
-        <View style={[styles.locationList, { backgroundColor: t.colors.background }]}>
+        <View style={[styles.locationList, { backgroundColor: 'transparent' }]}>
           <Text style={[styles.listTitle, { color: t.colors.text }]}>{tr('locations.select.available')}</Text>
 
           {geofenceError ? (

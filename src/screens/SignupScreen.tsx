@@ -225,7 +225,7 @@ const SignupScreen = ({ navigation }) => {
           styles.animatedBackground,
           {
             opacity: backgroundOpacity,
-            backgroundColor: t.colors.background,
+            backgroundColor: 'transparent',
           }
         ]}
       />

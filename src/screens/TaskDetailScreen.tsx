@@ -274,7 +274,7 @@ const TaskDetailScreen = () => {
   if (loading) {
     return (
       <Screen>
-        <View style={[styles.centerContainer, { backgroundColor: t.colors.background }]}>
+        <View style={[styles.centerContainer, { backgroundColor: 'transparent' }]}>
           <ActivityIndicator size="large" color={t.colors.primary} />
           <Text style={[styles.loadingText, { color: t.colors.textSecondary }]}>{tr('taskDetail.loading')}</Text>
         </View>
@@ -285,7 +285,7 @@ const TaskDetailScreen = () => {
   if (error || !task) {
     return (
       <Screen>
-        <View style={[styles.centerContainer, { backgroundColor: t.colors.background }]}>
+        <View style={[styles.centerContainer, { backgroundColor: 'transparent' }]}>
           <Ionicons name="alert-circle-outline" size={48} color={t.colors.danger} />
           <Text style={[styles.errorText, { color: t.colors.danger }]}>
             {error || tr('taskDetail.notFound')}
@@ -306,7 +306,7 @@ const TaskDetailScreen = () => {
 
   return (
     <Screen>
-      <ScrollView style={[styles.container, { backgroundColor: t.colors.background }]}>
+      <ScrollView style={[styles.container, { backgroundColor: 'transparent' }]}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: t.colors.border }]}>
           <Pressable

@@ -216,7 +216,7 @@ const AttendanceStatusScreen = ({ navigation }) => {
           
           return (
             <Screen>
-              <View style={[styles.container, { backgroundColor: t.colors.background }]}>
+              <View style={[styles.container, { backgroundColor: 'transparent' }]}>
                 <View style={[styles.header, { backgroundColor: t.colors.card, borderBottomColor: t.colors.border }]}>
                   <Pressable
                     style={styles.backButton}
@@ -253,7 +253,7 @@ const AttendanceStatusScreen = ({ navigation }) => {
         // Automatic checkout - show default message
         return (
           <Screen>
-            <View style={[styles.container, { backgroundColor: t.colors.background }]}>
+            <View style={[styles.container, { backgroundColor: 'transparent' }]}>
               <View style={[styles.header, { backgroundColor: t.colors.card, borderBottomColor: t.colors.border }]}>
                 <Pressable
                   style={styles.backButton}
@@ -286,7 +286,7 @@ const AttendanceStatusScreen = ({ navigation }) => {
     
     return (
       <Screen>
-        <View style={[styles.container, { backgroundColor: t.colors.background }]}>
+        <View style={[styles.container, { backgroundColor: 'transparent' }]}>
           <View style={[styles.header, { backgroundColor: t.colors.card, borderBottomColor: t.colors.border }]}>
             <Pressable
               style={styles.backButton}
@@ -341,7 +341,7 @@ const AttendanceStatusScreen = ({ navigation }) => {
 
   return (
     <Screen>
-      <View style={[styles.container, { backgroundColor: t.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: t.colors.card, borderBottomColor: t.colors.border }]}>
           <Pressable

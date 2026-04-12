@@ -2,21 +2,17 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useThemeTokens, useTheme } from '../theme/ThemeProvider';
+import { useThemeTokens } from '../theme/ThemeProvider';
 import { useBreakpoint } from '../hooks/useBreakpoint';
-import ElectricBackdrop from './ElectricBackdrop';
 
 const Screen = ({ children }) => {
   const t = useThemeTokens();
-  const { resolvedMode } = useTheme();
   const { wide, compact } = useBreakpoint();
   const maxWidth = wide ? 1200 : 960;
   const horizontalPad = compact ? 12 : wide ? 28 : 16;
-  const isDark = resolvedMode === 'dark';
 
   return (
-    <View style={[styles.root, { backgroundColor: t.colors.background }]}>
-      <ElectricBackdrop isDark={isDark} />
+    <View style={styles.root}>
       <SafeAreaView
         style={styles.safe}
         edges={['top', 'left', 'right']}
@@ -33,7 +29,7 @@ const Screen = ({ children }) => {
 };
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: 'transparent' },
   safe: { flex: 1, backgroundColor: 'transparent' },
   scroll: { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { flexGrow: 1, paddingVertical: 16 },

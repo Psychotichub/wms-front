@@ -338,7 +338,7 @@ const AttendanceHistoryScreen = ({ navigation, route }) => {
 
   return (
     <Screen>
-      <View style={[styles.container, { backgroundColor: t.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: t.colors.card, borderBottomColor: t.colors.border }]}>
           <Pressable
@@ -373,7 +373,7 @@ const AttendanceHistoryScreen = ({ navigation, route }) => {
         </View>
 
         {/* Filters */}
-        <View style={[styles.filtersContainer, { backgroundColor: t.colors.background }]}>
+        <View style={[styles.filtersContainer, { backgroundColor: 'transparent' }]}>
           {/* Date Range Filter */}
           <View style={styles.filterSection}>
             <Text style={[styles.filterTitle, { color: t.colors.text }]}>{tr('attendance.filterPeriod')}</Text>

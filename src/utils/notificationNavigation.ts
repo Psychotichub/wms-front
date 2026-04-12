@@ -1,15 +1,13 @@
 // @ts-nocheck
 import { navigationRef } from '../navigation/navigationRef';
 import { MAIN_TAB_ROUTE_NAMES } from '../navigation/routeConfig';
+import { resetRootToDashboardThenStackScreen, resetRootToMainTab } from '../navigation/stackNavigation';
 
 function navigateNamed(navigation, name, params) {
   if (MAIN_TAB_ROUTE_NAMES.includes(name)) {
-    navigation.navigate('MainTabs', {
-      screen: name,
-      ...(params ? { params } : {})
-    });
+    resetRootToMainTab(navigation, name, params);
   } else {
-    navigation.navigate(name, params);
+    resetRootToDashboardThenStackScreen(navigation, name, params);
   }
 }
 
@@ -52,20 +50,17 @@ export const navigateFromNotification = (notification) => {
         break;
 
       case 'daily_report_missing':
-        // Navigate to Daily Report screen
-        navigation.navigate('Daily Report');
+        resetRootToMainTab(navigation, 'Daily Report');
         break;
 
       case 'low_stock':
       case 'inventory_exceeded':
-        // Navigate to Inventory screen
-        navigation.navigate('Inventory');
+        resetRootToDashboardThenStackScreen(navigation, 'Inventory');
         break;
 
       case 'contract_exceeded':
-        // Navigate to Contract Quantity screen (admin only)
         // Note: This will show Access Denied if user is not admin
-        navigation.navigate('Contract Quantity');
+        resetRootToDashboardThenStackScreen(navigation, 'Contract Quantity');
         break;
 
       case 'system_announcement':
@@ -78,7 +73,7 @@ export const navigateFromNotification = (notification) => {
         } else if (data?.action === 'view_report') {
           navigateNamed(navigation, 'Daily Report');
         } else if (data?.action === 'view_inventory') {
-          navigation.navigate('Inventory');
+          resetRootToDashboardThenStackScreen(navigation, 'Inventory');
         }
         // Otherwise, stay on notifications screen (no navigation)
         break;

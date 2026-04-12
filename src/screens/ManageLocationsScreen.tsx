@@ -826,7 +826,7 @@ const ManageLocationsScreen = () => {
         <View style={styles.headerRight} />
       </View>
       <ScrollView
-        style={[styles.container, { backgroundColor: t.colors.background }]}
+        style={[styles.container, { backgroundColor: 'transparent' }]}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >

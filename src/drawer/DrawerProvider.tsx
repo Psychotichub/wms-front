@@ -7,6 +7,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { useThemeTokens } from '../theme/ThemeProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import { navigationRef } from '../navigation/navigationRef';
+import { resetRootToDashboardThenStackScreen } from '../navigation/stackNavigation';
 import { appScreenConfig, MAIN_TAB_ROUTE_NAMES, ROUTE_BREADCRUMB_LABELS } from '../navigation/routeConfig';
 import { loadStarredRoutes } from '../utils/starredRoutes';
 import AnimatedView from '../components/AnimatedView';
@@ -63,11 +64,12 @@ const DrawerContent = ({ onItemPress, drawerOpen }) => {
   }, [role, safeUnreadCount]);
 
   const navigateToRoute = (target) => {
-    if (navigationRef.current) {
+    const nav = navigationRef.current;
+    if (nav) {
       if (MAIN_TAB_ROUTE_NAMES.includes(target)) {
-        navigationRef.current.navigate('MainTabs', { screen: target });
+        nav.navigate('MainTabs', { screen: target });
       } else {
-        navigationRef.current.navigate(target);
+        resetRootToDashboardThenStackScreen(nav, target);
       }
     }
     onItemPress();

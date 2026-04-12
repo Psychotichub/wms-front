@@ -152,6 +152,7 @@ const AppStack = () => {
     <Stack.Navigator
       initialRouteName="MainTabs"
       screenOptions={({ navigation }) => ({
+        contentStyle: { backgroundColor: 'transparent' },
         headerShown: true,
         headerStyle: { 
           backgroundColor: isDark ? t.colors.surface : t.colors.card, 

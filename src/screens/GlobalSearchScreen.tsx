@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { useThemeTokens } from '../theme/ThemeProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import { MAIN_TAB_ROUTE_NAMES } from '../navigation/routeConfig';
+import { resetRootToDashboardThenStackScreen } from '../navigation/stackNavigation';
 
 const DEBOUNCE_MS = 350;
 
@@ -64,7 +65,7 @@ export default function GlobalSearchScreen() {
       if (MAIN_TAB_ROUTE_NAMES.includes(target)) {
         navigation.navigate('MainTabs', { screen: target, params });
       } else {
-        navigation.navigate(target, params);
+        resetRootToDashboardThenStackScreen(navigation, target, params);
       }
     },
     [navigation]
