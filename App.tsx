@@ -51,10 +51,6 @@ try {
 }
 
 export default function App() {
-  React.useEffect(() => {
-    console.log('🚀 App initialized');
-  }, []);
-
   if (envError) {
     return (
       <View style={styles.errorContainer}>

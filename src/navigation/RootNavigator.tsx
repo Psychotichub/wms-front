@@ -135,10 +135,6 @@ const RootNavigator = () => {
     }
   }, [isAuthReady, navReady, token, user]);
 
-  useEffect(() => {
-    console.log('📱 RootNavigator state:', { isAuthReady, navReady, hasToken: !!token });
-  }, [isAuthReady, navReady, token]);
-
   if (!isAuthReady || !navReady) {
     return (
       <View

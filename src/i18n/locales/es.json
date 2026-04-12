@@ -101,7 +101,10 @@
     "pickCircuit": "Elige un circuito para el panel",
     "duplicateEntry": "Ya existe esta combinación (material, ubicación, panel, circuito) en esta fecha",
     "quantityPositive": "La cantidad debe ser mayor que 0",
-    "saved": "Reporte guardado"
+    "saved": "Reporte guardado",
+    "loadMore": "Cargar más",
+    "loadingMore": "Cargando…",
+    "showingOf": "Mostrando {{loaded}} de {{total}}"
   },
   "received": {
     "pickMaterial": "Elige un material válido de la lista",

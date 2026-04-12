@@ -224,14 +224,15 @@ const DashboardScreen = ({ navigation }) => {
     setLoading(true);
     try {
       const [reportsRes, materialsRes, panelsRes] = await Promise.all([
-        request('/api/reports/daily?limit=500'),
-        request('/api/materials?limit=2000'),
+        // limit=1: we only need pagination.total
+        request('/api/reports/daily?limit=1'),
+        request('/api/materials?limit=1'),
         request('/api/panels'),
         loadAnalytics() // Load analytics data
       ]);
       setCounts({
-        reports: reportsRes?.reports?.length ?? 0,
-        materials: materialsRes?.materials?.length ?? 0,
+        reports: reportsRes?.pagination?.total ?? reportsRes?.reports?.length ?? 0,
+        materials: materialsRes?.pagination?.total ?? materialsRes?.materials?.length ?? 0,
         panels: panelsRes?.panels?.length ?? 0
       });
     } catch (_err) {

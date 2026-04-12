@@ -53,10 +53,6 @@ export const generatePDF = async (htmlContent, filename) => {
         html: htmlContent,
         base64: false,
       });
-      
-      // Log success for debugging
-      console.log('printToFileAsync result type:', typeof result);
-      console.log('printToFileAsync result:', result);
     } catch (printError) {
       console.error('printToFileAsync error:', printError);
       console.error('Error details:', JSON.stringify(printError, null, 2));
@@ -98,10 +94,8 @@ export const generatePDF = async (htmlContent, filename) => {
         mimeType: 'application/pdf',
         dialogTitle: `Share ${filename}.pdf`,
       });
-    } else {
-      console.log('Sharing not available');
     }
-    
+
     return uri;
   } catch (error) {
     console.error('Error generating PDF:', error);
@@ -178,8 +172,6 @@ export const generateExcel = async (data, date, filename, headers = null) => {
 
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(fileUri);
-    } else {
-      console.log('Sharing not available');
     }
 
     return fileUri;

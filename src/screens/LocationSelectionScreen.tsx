@@ -259,23 +259,6 @@ const LocationSelectionScreen = ({ navigation }) => {
     }
   }, [attendanceStatus]);
 
-  // When location and selected geofence are both available, check status immediately
-  useEffect(() => {
-    if (selectedGeofence && location && location.coords && !attendanceStatus.isCheckedIn && !showWorkingHoursModal) {
-      console.log('[LocationSelectionScreen] Location and geofence available, checking status', {
-        geofenceName: selectedGeofence.name,
-        hasLocation: !!location
-      });
-      // The LocationContext useEffect will handle the check, but we can also ensure it happens
-      // by triggering a small delay to let state settle
-      const timer = setTimeout(() => {
-        console.log('[LocationSelectionScreen] Status check should happen via LocationContext');
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedGeofence, location, attendanceStatus.isCheckedIn, showWorkingHoursModal]);
-
   const handleGeofenceSelect = useCallback((geofence) => {
     setSelectedGeofence(geofence);
     // Show working hours modal when selecting a geofence
@@ -329,34 +312,14 @@ const LocationSelectionScreen = ({ navigation }) => {
     });
     
     setShowWorkingHoursModal(false);
-    
-    // After saving working hours, immediately check if user is at the selected location
-    // This ensures status is updated right away
-    console.log('[LocationSelectionScreen] handleSaveWorkingHours: Working hours saved, checking location status');
-    
-    // Small delay to ensure state is updated
+
     setTimeout(async () => {
       try {
-        let currentLoc = location;
-        
-        // If location is not available, try to get it
-        if (!currentLoc && isTracking) {
-          console.log('[LocationSelectionScreen] handleSaveWorkingHours: Getting current location');
-          currentLoc = await getCurrentLocation();
+        if (!location && isTracking) {
+          await getCurrentLocation();
         }
-        
-        if (currentLoc && currentLoc.coords && selectedGeofence) {
-          console.log('[LocationSelectionScreen] handleSaveWorkingHours: Location available, status check will happen automatically via LocationContext');
-          // The LocationContext useEffect will automatically check when selectedGeofenceId and location are both available
-          // But we can also trigger it manually here if needed
-        } else {
-          console.log('[LocationSelectionScreen] handleSaveWorkingHours: Waiting for location to check status', {
-            hasLocation: !!currentLoc,
-            hasSelectedGeofence: !!selectedGeofence
-          });
-        }
-      } catch (error) {
-        console.error('[LocationSelectionScreen] handleSaveWorkingHours: Error checking location status', error);
+      } catch {
+        /* LocationContext will reconcile when GPS is ready */
       }
     }, 300);
   };

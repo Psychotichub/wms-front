@@ -12,13 +12,7 @@
       "DOM"
     ],
     "skipLibCheck": true,
-    "strict": false,
-    "baseUrl": ".",
-    "paths": {
-      "*": [
-        "src/*"
-      ]
-    }
+    "strict": false
   },
   "include": [
     "src/**/*",

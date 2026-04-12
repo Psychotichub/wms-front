@@ -101,7 +101,10 @@
     "pickCircuit": "Select a circuit for the chosen panel",
     "duplicateEntry": "This exact entry (Material, Location, Panel, Circuit) already exists for this date",
     "quantityPositive": "Quantity must be greater than 0",
-    "saved": "Report saved"
+    "saved": "Report saved",
+    "loadMore": "Load more",
+    "loadingMore": "Loading…",
+    "showingOf": "Showing {{loaded}} of {{total}}"
   },
   "received": {
     "pickMaterial": "Select a valid material from the list",

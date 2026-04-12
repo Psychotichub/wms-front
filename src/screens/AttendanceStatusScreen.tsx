@@ -89,23 +89,17 @@ const AttendanceStatusScreen = ({ navigation }) => {
   };
 
   const handleCheckOut = async () => {
-    console.log('[AttendanceStatusScreen] handleCheckOut called');
     const locationName = getDisplayGeofenceName();
-    console.log('[AttendanceStatusScreen] Location name:', locationName);
-    console.log('[AttendanceStatusScreen] manualCheckOut function available:', typeof manualCheckOut);
-    
+
     // On web, Alert.alert might not work, so use window.confirm as fallback
     if (Platform.OS === 'web') {
       const confirmed = window.confirm(tr('attendance.checkoutConfirmWeb', { place: locationName }));
       if (!confirmed) {
-        console.log('[AttendanceStatusScreen] Checkout cancelled by user');
         return;
       }
       
       try {
-        console.log('[AttendanceStatusScreen] Starting manual checkout...');
         await manualCheckOut();
-        console.log('[AttendanceStatusScreen] Manual checkout successful');
         window.alert(tr('attendance.checkedOutWeb'));
         // Small delay to ensure backend has processed the checkout before navigating
         setTimeout(() => {
@@ -127,9 +121,7 @@ const AttendanceStatusScreen = ({ navigation }) => {
             style: 'destructive',
             onPress: async () => {
               try {
-                console.log('[AttendanceStatusScreen] Starting manual checkout...');
                 await manualCheckOut();
-                console.log('[AttendanceStatusScreen] Manual checkout successful');
                 Alert.alert(tr('attendance.success'), tr('attendance.checkedOutWeb'));
                 // Small delay to ensure backend has processed the checkout before navigating
                 setTimeout(() => {

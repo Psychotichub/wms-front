@@ -1,7 +1,7 @@
 // @ts-nocheck
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View, Pressable } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useIsFocused } from '@react-navigation/native';
 import Screen from '../components/Screen';
 import { useAuth } from '../context/AuthContext';
 import { useThemeTokens } from '../theme/ThemeProvider';
@@ -10,11 +10,13 @@ import Button from '../components/ui/Button';
 import AutocompleteInput from '../components/ui/AutocompleteInput';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
+import { fetchAllDailyReportsInRange } from '../utils/dailyReportsFetch';
 
 const PriceScreen = () => {
   const { request } = useAuth();
   const t = useThemeTokens();
   const { t: tr } = useI18n();
+  const isFocused = useIsFocused();
 
   const [reports, setReports] = useState([]);
   const [materials, setMaterials] = useState([]);
@@ -37,24 +39,23 @@ const PriceScreen = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [reportRes, materialRes] = await Promise.all([
-        request('/api/reports/daily?limit=500'),
+      const [allReports, materialRes] = await Promise.all([
+        fetchAllDailyReportsInRange(request, startDate, endDate),
         request('/api/materials?limit=2000')
       ]);
-      setReports(reportRes.reports || []);
+      setReports(allReports);
       setMaterials(materialRes.materials || []);
     } catch (err) {
       setMessage(err.message);
     } finally {
       setLoading(false);
     }
-  }, [request]);
+  }, [request, startDate, endDate]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData])
-  );
+  useEffect(() => {
+    if (!isFocused) return;
+    loadData();
+  }, [isFocused, loadData]);
 
   const shiftDate = (dateStr, days) => {
     const d = new Date(dateStr);

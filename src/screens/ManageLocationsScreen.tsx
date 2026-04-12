@@ -147,11 +147,6 @@ const ManageLocationsScreen = () => {
       if (data?.locations) {
         // Filter out inactive locations (deleted locations have isActive: false)
         const activeLocations = data.locations.filter(loc => loc.isActive !== false);
-        console.log('Loaded locations:', {
-          total: data.locations.length,
-          active: activeLocations.length,
-          inactive: data.locations.length - activeLocations.length
-        });
         setLocations(activeLocations);
       }
     } catch (err) {
@@ -165,13 +160,6 @@ const ManageLocationsScreen = () => {
   useEffect(() => {
     const region = getRegion();
     setMapRegion(region);
-    // Log for debugging
-    if (Platform.OS === 'web') {
-      console.log('Map region updated:', region);
-      if (!currentLocation?.coords) {
-        console.warn('Current location not available. Using default region.');
-      }
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coordinatesText, centerLat, centerLon, currentLocation]);
 
@@ -244,14 +232,11 @@ const ManageLocationsScreen = () => {
   };
 
   const goToCurrentLocation = async () => {
-    console.log('[ManageLocationsScreen] GPS/Locate button clicked');
-    
     try {
       let locationToUse = currentLocation;
       
       // If location is not available, try to get it
       if (!locationToUse?.coords) {
-        console.log('[ManageLocationsScreen] Location not in state, requesting current location...');
         try {
           locationToUse = await getCurrentLocation();
         } catch (error) {
@@ -274,13 +259,7 @@ const ManageLocationsScreen = () => {
         );
         return;
       }
-      
-      console.log('[ManageLocationsScreen] Navigating to current location:', {
-        latitude: locationToUse.coords.latitude,
-        longitude: locationToUse.coords.longitude,
-        accuracy: locationToUse.coords.accuracy
-      });
-      
+
       animateToRegion({
         latitude: locationToUse.coords.latitude,
         longitude: locationToUse.coords.longitude,
@@ -677,16 +656,10 @@ const ManageLocationsScreen = () => {
     }
 
     try {
-      console.log('performDelete: Starting deletion for location:', locationId);
-      console.log('performDelete: Making DELETE request to:', `/api/locations/${locationId}`);
-      
       const response = await request(`/api/locations/${locationId}`, { method: 'DELETE' });
-      
-      console.log('performDelete: Delete response received:', response);
-      
+
       // Clear form if editing the deleted location
       if (editingId === locationId) {
-        console.log('performDelete: Clearing form for deleted location');
         setEditingId(null);
         setName('');
         setAddress('');
@@ -695,13 +668,10 @@ const ManageLocationsScreen = () => {
         setCenterLat('');
         setRadius('');
       }
-      
-      // Refresh lists
-      console.log('performDelete: Refreshing locations list');
+
       await loadLocations();
       await loadGeofences?.();
-      
-      console.log('performDelete: Deletion successful');
+
       Alert.alert(tr('locations.manage.success'), response?.message || tr('locations.manage.deleted'));
     } catch (err) {
       console.error('performDelete: Delete error occurred:', err);
@@ -721,16 +691,11 @@ const ManageLocationsScreen = () => {
       return;
     }
 
-    console.log('Delete button clicked for location:', locationId);
-
     if (Platform.OS === 'web') {
       // On web, use window.confirm for better compatibility
       const confirmed = window.confirm(tr('locations.manage.deleteConfirm'));
       if (confirmed) {
-        console.log('User confirmed delete on web, calling performDelete');
         performDelete(locationId);
-      } else {
-        console.log('Delete cancelled by user on web');
       }
     } else {
       // On native, use Alert
@@ -741,15 +706,12 @@ const ManageLocationsScreen = () => {
           { 
             text: tr('common.cancel'), 
             style: 'cancel',
-            onPress: () => {
-              console.log('Delete cancelled by user');
-            }
+            onPress: () => {}
           },
           {
             text: tr('common.delete'),
             style: 'destructive',
             onPress: () => {
-              console.log('User confirmed delete, calling performDelete');
               performDelete(locationId);
             }
           }
@@ -792,7 +754,6 @@ const ManageLocationsScreen = () => {
             <Pressable
               style={[styles.actionButton, { backgroundColor: getRGBA(t.colors.danger, 0.12) }]}
               onPress={() => {
-                console.log('Delete button pressed, item:', item);
                 const locationId = item.id || item._id;
                 if (locationId) {
                   handleDelete(locationId);

@@ -171,7 +171,7 @@ const MapController = ({ mapRef, onRegionChangeComplete }) => {
             longitudeDelta: latDelta,
           });
         }
-      } catch (_err) {
+      } catch {
         // Map not ready
       }
     };
@@ -214,8 +214,7 @@ const MapController = ({ mapRef, onRegionChangeComplete }) => {
     const hideLocationButton = () => {
       // Find and hide all location-related buttons
       const allButtons = document.querySelectorAll('button');
-      let hiddenCount = 0;
-      
+
       allButtons.forEach((button) => {
         const title = (button.getAttribute('title') || button.getAttribute('aria-label') || '').toLowerCase();
         const jsaction = (button.getAttribute('jsaction') || '').toLowerCase();
@@ -229,24 +228,13 @@ const MapController = ({ mapRef, onRegionChangeComplete }) => {
           jsaction.includes('location') ||
           className.includes('location')
         ) {
-          console.log('[GeofenceMap] Hiding location button:', {
-            title: button.getAttribute('title'),
-            ariaLabel: button.getAttribute('aria-label'),
-            jsaction: button.getAttribute('jsaction'),
-            className: button.className
-          });
           button.style.display = 'none';
           button.style.visibility = 'hidden';
           button.style.opacity = '0';
           button.setAttribute('aria-hidden', 'true');
-          hiddenCount++;
         }
       });
-      
-      if (hiddenCount > 0) {
-        console.log(`[GeofenceMap] Hidden ${hiddenCount} location button(s)`);
-      }
-      
+
       // Also check buttons in the map container specifically
       try {
         const mapDiv = map.getDiv ? map.getDiv() : null;
@@ -261,7 +249,7 @@ const MapController = ({ mapRef, onRegionChangeComplete }) => {
             }
           });
         }
-      } catch (_e) {
+      } catch {
         // Map div not available
       }
     };
@@ -276,7 +264,7 @@ const MapController = ({ mapRef, onRegionChangeComplete }) => {
     let idleListener = null;
     try {
       idleListener = map.addListener('idle', hideLocationButton);
-    } catch (_e) {
+    } catch {
       // Listener not available
     }
     
@@ -287,7 +275,7 @@ const MapController = ({ mapRef, onRegionChangeComplete }) => {
       if (idleListener && window.google?.maps?.event) {
         try {
           window.google.maps.event.removeListener(idleListener);
-        } catch (_e) {
+        } catch {
           // Ignore cleanup errors
         }
       }
@@ -391,7 +379,7 @@ const GeofenceMap = forwardRef(
                 longitudeDelta: latDelta,
               };
             }
-          } catch (_err) {
+          } catch {
             // Map not ready
           }
         }
@@ -432,7 +420,7 @@ const GeofenceMap = forwardRef(
           };
           setCurrentRegion(newRegion);
         }
-      } catch (_err) {
+      } catch {
         // Map not ready
       }
     };
@@ -456,7 +444,7 @@ const GeofenceMap = forwardRef(
           };
           setCurrentRegion(newRegion);
         }
-      } catch (_err) {
+      } catch {
         // Map not ready
       }
     };

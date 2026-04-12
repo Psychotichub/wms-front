@@ -124,7 +124,6 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
     const { apiUrl, token, userId } = await getApiConfig();
     
     if (!apiUrl || !token || !userId) {
-      console.log('Background task: Missing API config, skipping');
       return;
     }
 

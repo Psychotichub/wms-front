@@ -280,7 +280,6 @@ export const LocationProvider = ({ children }) => {
       const isStarted = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
       if (isStarted) {
         await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
-        console.log('Background location tracking stopped');
       }
     } catch (error) {
       console.error('Error stopping background location tracking:', error);
@@ -403,28 +402,24 @@ export const LocationProvider = ({ children }) => {
   const startBackgroundLocationTracking = useCallback(async () => {
     // Skip background tracking on web
     if (Platform.OS === 'web') {
-      console.log('Background location tracking skipped on web');
       return false;
     }
 
     try {
       const hasPermission = await requestPermissions();
       if (!hasPermission) {
-        console.log('Background location: Permissions not granted');
         return false;
       }
 
       // Check if task is already registered
       const isTaskDefined = TaskManager.isTaskDefined(BACKGROUND_LOCATION_TASK);
       if (!isTaskDefined) {
-        console.log('Background location task not defined');
         return false;
       }
 
       // Check if already started
       const isStarted = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
       if (isStarted) {
-        console.log('Background location tracking already started');
         return true;
       }
 
@@ -442,7 +437,6 @@ export const LocationProvider = ({ children }) => {
         showsBackgroundLocationIndicator: true
       });
 
-      console.log('Background location tracking started');
       return true;
     } catch (error) {
       console.error('Error starting background location tracking:', error);
@@ -1492,7 +1486,6 @@ export const LocationProvider = ({ children }) => {
         if (Platform.OS !== 'web' && selectedGeofenceId && token && user?.site) {
           const hasBackgroundPermission = await checkBackgroundPermissions();
           if (hasBackgroundPermission) {
-            console.log('[LocationContext] Background permissions granted, starting background tracking');
             await startBackgroundLocationTracking().catch((error) => {
               console.error('[LocationContext] Error starting background tracking on app active:', error);
             });
@@ -1548,7 +1541,6 @@ export const LocationProvider = ({ children }) => {
           // Check if background tracking is already started
           const isStarted = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
           if (!isStarted && !wasTracking) {
-            console.log('[LocationContext] Background permissions granted, automatically starting background tracking for attendance');
             await startBackgroundLocationTracking();
             wasTracking = true;
           } else if (isStarted) {
@@ -1597,7 +1589,6 @@ export const LocationProvider = ({ children }) => {
         if (hasBackgroundPermission) {
           const isStarted = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
           if (!isStarted) {
-            console.log('[LocationContext] Location permissions granted, starting background tracking for attendance');
             await startBackgroundLocationTracking().catch((error) => {
               console.error('[LocationContext] Error starting background tracking after permission grant:', error);
             });

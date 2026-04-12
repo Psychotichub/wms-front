@@ -24,20 +24,6 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
-  useEffect(() => {
-    if (isDev) {
-      console.log('🚀 API URL resolved:', apiUrl);
-      console.log('📱 Platform:', Platform.OS);
-    }
-  }, [apiUrl]);
-
-  // Debug auth ready state
-  useEffect(() => {
-    if (isDev) {
-      console.log('🔐 Auth state:', { isAuthReady, hasToken: !!token, hasUser: !!user });
-    }
-  }, [isAuthReady, token, user]);
-
   const tokenRef = useRef(null);
   const refreshTokenRef = useRef(null);
   const userRef = useRef(null);
@@ -96,15 +82,6 @@ export const AuthProvider = ({ children }) => {
         let storedUser = await secureStorage.getItem(storageKeys.userKey);
         let storedRefresh = await secureStorage.getItem(storageKeys.refreshKey);
         
-        if (isDev) {
-          console.log('🔑 Storage lookup:', {
-            tokenKey: storageKeys.tokenKey,
-            hasToken: !!storedToken,
-            hasUser: !!storedUser,
-            hasRefresh: !!storedRefresh
-          });
-        }
-
         // Migrate legacy keys (older builds) into per-api keys once.
         if (!storedToken || !storedUser || !storedRefresh) {
           const legacyToken = await secureStorage.getItem(storageKeys.legacyTokenKey);
@@ -136,21 +113,10 @@ export const AuthProvider = ({ children }) => {
           };
           setToken(storedToken);
           setUser(userData);
-          if (isDev) {
-            console.log('✅ Loaded token and user from storage:', {
-              hasToken: !!storedToken,
-              isEmailVerified: userData.isEmailVerified
-            });
-          }
         } else if (storedUser) {
           // Load unverified user (no token) - for email verification flow
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
-          if (isDev) {
-            console.log('✅ Loaded unverified user from storage (awaiting email verification)');
-          }
-        } else if (isDev) {
-          console.log('⚠️  No stored token/user found');
         }
         if (storedRefresh) {
           setRefreshToken(storedRefresh);
@@ -178,9 +144,6 @@ export const AuthProvider = ({ children }) => {
       try {
         // Prevent wiping storage before hydration completes
         if (!isAuthReady) {
-          if (isDev) {
-            console.log('⏳ Skipping persist - auth not ready yet');
-          }
           return;
         }
 
@@ -193,30 +156,17 @@ export const AuthProvider = ({ children }) => {
           } else {
             await secureStorage.removeItem(storageKeys.refreshKey);
           }
-          if (isDev) {
-            console.log('💾 Saved token and user to storage:', {
-              tokenKey: storageKeys.tokenKey,
-              hasToken: !!token,
-              hasUser: !!user
-            });
-          }
         } else if (user && !token) {
           // Save user data temporarily (for email verification flow)
           // Don't save token since user is not verified yet
           await secureStorage.setItem(storageKeys.userKey, JSON.stringify(user));
           await secureStorage.removeItem(storageKeys.tokenKey);
           await secureStorage.removeItem(storageKeys.refreshKey);
-          if (isDev) {
-            console.log('💾 Saved unverified user to storage (awaiting email verification)');
-          }
         } else {
           // No user and no token - clear everything
           await secureStorage.removeItem(storageKeys.tokenKey);
           await secureStorage.removeItem(storageKeys.userKey);
           await secureStorage.removeItem(storageKeys.refreshKey);
-          if (isDev) {
-            console.log('🗑️  Removed token and user from storage (logout/clear)');
-          }
         }
       } catch (err) {
         await logError({
@@ -360,14 +310,6 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, password, company, deviceType: Platform.OS })
       });
       
-      if (isDev) {
-        console.log('🔐 Login successful:', {
-          hasToken: !!data.token,
-          hasUser: !!data.user,
-          hasRefreshToken: !!data.refreshToken
-        });
-      }
-      
       // Validate that required fields are present
       if (!data || (!data.token && !data.user)) {
         throw new Error('Invalid login response: missing token or user data');
@@ -437,9 +379,6 @@ export const AuthProvider = ({ children }) => {
       try {
         await secureStorage.removeItem(storageKeys.tokenKey);
         await secureStorage.removeItem(storageKeys.refreshKey);
-        if (isDev) {
-          console.log('🗑️  Cleared old tokens from storage before signup');
-        }
       } catch (storageErr) {
         // Ignore storage errors
         if (isDev) {
@@ -452,10 +391,6 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ name, email, password, company, adminCode })
       });
       
-      if (isDev) {
-        console.log('📝 Signup response:', { hasUser: !!data.user, hasToken: !!data.token, data });
-      }
-      
       // Don't save tokens on signup - user must verify email first
       // Only save user data (without tokens) so we can show verification screen
       if (data.user) {
@@ -463,14 +398,6 @@ export const AuthProvider = ({ children }) => {
         const userData = { ...data.user, isEmailVerified: false };
         setUser(userData);
         userRef.current = userData;
-        
-        if (isDev) {
-          console.log('✅ Signup successful, user set (awaiting verification):', {
-            email: userData.email,
-            isEmailVerified: userData.isEmailVerified,
-            userId: userData.id
-          });
-        }
       } else {
         if (isDev) {
           console.warn('⚠️ Signup response missing user data:', data);

@@ -22,7 +22,6 @@ import { useI18n } from '../i18n/I18nProvider';
  * to automatically verify the email when the user clicks the verification link.
  */
 const EmailVerificationScreen = () => {
-  console.log('📧 EmailVerificationScreen rendered');
   const route = useRoute();
   const navigation = useNavigation();
   const t = useThemeTokens();
@@ -30,10 +29,6 @@ const EmailVerificationScreen = () => {
   const apiUrl = resolveApiUrl();
   const { setToken, setRefreshToken, setUser } = useAuth();
   
-  useEffect(() => {
-    console.log('📧 EmailVerificationScreen mounted, params:', route.params);
-  }, [route.params]);
-
   // Get token from route params (native) or URL query (web)
   const [verificationToken, setVerificationToken] = useState(null);
   const [verificationCode, setVerificationCode] = useState('');

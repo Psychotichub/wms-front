@@ -133,14 +133,11 @@ const RealTimeMapWidget = ({ style }) => {
   }, [mapRegion, animateToRegion]);
 
   const goToCurrentLocation = useCallback(async () => {
-    console.log('[RealTimeMapWidget] GPS/Locate button clicked');
-    
     try {
       let locationToUse = userLocation;
       
       // If location is not available, try to get it
       if (!locationToUse?.coords) {
-        console.log('[RealTimeMapWidget] Location not in state, requesting current location...');
         try {
           locationToUse = await getCurrentLocation();
         } catch (error) {
@@ -163,13 +160,7 @@ const RealTimeMapWidget = ({ style }) => {
         );
         return;
       }
-      
-      console.log('[RealTimeMapWidget] Navigating to user location:', {
-        latitude: locationToUse.coords.latitude,
-        longitude: locationToUse.coords.longitude,
-        accuracy: locationToUse.coords.accuracy
-      });
-      
+
       animateToRegion({
         latitude: locationToUse.coords.latitude,
         longitude: locationToUse.coords.longitude,

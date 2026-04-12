@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View, Pressable, FlatList, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import NetInfo from '@react-native-community/netinfo';
@@ -15,6 +15,8 @@ import AutocompleteInput from '../components/ui/AutocompleteInput';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
 import { generatePDF, generateExcel, generateHTMLTable } from '../utils/exportUtils';
+import { DAILY_REPORTS_PAGE_SIZE } from '../config/apiLimits';
+import { fetchAllDailyReportsForDate } from '../utils/dailyReportsFetch';
 
 const REPORT_ROW_HEIGHT = 44;
 
@@ -90,9 +92,13 @@ const DailyReportScreen = () => {
   const [date, setDate] = useState(() => new Date().toISOString().substring(0, 10));
   const [filterDate, setFilterDate] = useState(() => new Date().toISOString().substring(0, 10));
   const [reports, setReports] = useState([]);
+  const [reportsTotal, setReportsTotal] = useState(0);
+  const [reportsPage, setReportsPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const skipNextFocusReload = useRef(true);
 
 
   const isInList = (val, list) =>
@@ -104,17 +110,49 @@ const DailyReportScreen = () => {
     return d.toISOString().substring(0, 10);
   };
 
-  const loadReports = useCallback(async () => {
+  const reloadReports = useCallback(async () => {
     setLoading(true);
+    setReports([]);
     try {
-      const data = await request('/api/reports/daily?limit=500');
+      const limit = DAILY_REPORTS_PAGE_SIZE;
+      const q = new URLSearchParams({
+        date: filterDate,
+        page: '1',
+        limit: String(limit)
+      });
+      const data = await request(`/api/reports/daily?${q.toString()}`);
       setReports(data.reports || []);
+      setReportsTotal(data.pagination?.total ?? 0);
+      setReportsPage(1);
     } catch (err) {
       setMessage(err.message);
     } finally {
       setLoading(false);
     }
-  }, [request]);
+  }, [filterDate, request]);
+
+  const loadMoreReports = useCallback(async () => {
+    if (loadingMore || loading) return;
+    if (reports.length >= reportsTotal) return;
+    const nextPage = reportsPage + 1;
+    setLoadingMore(true);
+    try {
+      const limit = DAILY_REPORTS_PAGE_SIZE;
+      const q = new URLSearchParams({
+        date: filterDate,
+        page: String(nextPage),
+        limit: String(limit)
+      });
+      const data = await request(`/api/reports/daily?${q.toString()}`);
+      const batch = data.reports || [];
+      setReports((prev) => [...prev, ...batch]);
+      setReportsPage(nextPage);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, loading, reports.length, reportsTotal, reportsPage, filterDate, request]);
 
   const loadMaterials = useCallback(async () => {
     try {
@@ -134,22 +172,20 @@ const DailyReportScreen = () => {
     }
   }, [request]);
 
+  useEffect(() => {
+    reloadReports();
+  }, [reloadReports]);
+
   useFocusEffect(
     useCallback(() => {
-      loadReports();
       loadMaterials();
       loadPanels();
-    }, [loadMaterials, loadPanels, loadReports])
-  );
-
-  const filtered = useMemo(
-    () =>
-      reports.filter((r) => {
-        if (!r.date) return false;
-        const key = new Date(r.date).toISOString().substring(0, 10);
-        return key === filterDate;
-      }),
-    [reports, filterDate]
+      if (skipNextFocusReload.current) {
+        skipNextFocusReload.current = false;
+        return;
+      }
+      reloadReports();
+    }, [loadMaterials, loadPanels, reloadReports])
   );
 
   const uniqueMaterials = useMemo(() => {
@@ -265,30 +301,6 @@ const DailyReportScreen = () => {
         payloadCircuit = selectedCircuit;
       }
 
-      // Prevent duplicate Material + Location + Panel + Circuit on the same date
-      const targetDay = (date || '').substring(0, 10);
-      const duplicateEntry = reports.some((r) => {
-        const rDate = r.date ? new Date(r.date).toISOString().substring(0, 10) : '';
-        const rMaterial = (r.materialName || r.summary || '').trim().toLowerCase();
-        const rLocation = (r.location || '').trim().toLowerCase();
-        const rPanel = (r.panel || '').trim().toLowerCase();
-        const rCircuit = (r.circuit || '').trim().toLowerCase();
-        
-        return (
-          rDate === targetDay &&
-          rMaterial === matchingMaterial.name.trim().toLowerCase() &&
-          rLocation === matchingLocation.toLowerCase() &&
-          rPanel === payloadPanel.toLowerCase() &&
-          rCircuit === payloadCircuit.toLowerCase() &&
-          r._id !== editingId
-        );
-      });
-
-      if (duplicateEntry) {
-        setMessage(tr('dailyReport.duplicateEntry'));
-        return;
-      }
-
       const numericQty = Number(quantity);
       if (!Number.isFinite(numericQty) || numericQty <= 0) {
         setMessage(tr('dailyReport.quantityPositive'));
@@ -335,7 +347,7 @@ const DailyReportScreen = () => {
 
       resetForm();
       setMessage(tr('dailyReport.saved'));
-      loadReports();
+      reloadReports();
     } catch (err) {
       setMessage(err.message);
     }
@@ -361,11 +373,11 @@ const DailyReportScreen = () => {
       if (editingId === id) {
         resetForm();
       }
-      loadReports();
+      reloadReports();
     } catch (err) {
       setMessage(err.message);
     }
-  }, [editingId, loadReports, request, resetForm]);
+  }, [editingId, reloadReports, request, resetForm]);
 
   const renderReportItem = useCallback(
     ({ item }) => (
@@ -386,13 +398,18 @@ const DailyReportScreen = () => {
   }), []);
 
   const handleExportPDF = useCallback(async () => {
-    if (filtered.length === 0) {
+    if (reportsTotal === 0 && reports.length === 0) {
       Alert.alert('No Data', 'There is no data to export.');
       return;
     }
 
     try {
-      const data = filtered.map(report => [
+      const allForDay = await fetchAllDailyReportsForDate(request, filterDate);
+      if (allForDay.length === 0) {
+        Alert.alert('No Data', 'There is no data to export.');
+        return;
+      }
+      const data = allForDay.map((report) => [
         report.materialName || report.summary || '',
         `${report.quantity ?? 0} ${materialUnitMap[(report.materialName || report.summary || '').toLowerCase()] || ''}`,
         report.location || '',
@@ -411,16 +428,21 @@ const DailyReportScreen = () => {
       console.error('Export error:', error);
       Alert.alert('Error', 'Failed to export PDF. Please try again.');
     }
-  }, [filtered, filterDate, materialUnitMap]);
+  }, [filterDate, materialUnitMap, reports.length, reportsTotal, request]);
 
   const handleExportExcel = useCallback(async () => {
-    if (filtered.length === 0) {
+    if (reportsTotal === 0 && reports.length === 0) {
       Alert.alert('No Data', 'There is no data to export.');
       return;
     }
 
     try {
-      const data = filtered.map(report => [
+      const allForDay = await fetchAllDailyReportsForDate(request, filterDate);
+      if (allForDay.length === 0) {
+        Alert.alert('No Data', 'There is no data to export.');
+        return;
+      }
+      const data = allForDay.map((report) => [
         report.materialName || report.summary || '',
         report.quantity ?? 0,
         materialUnitMap[(report.materialName || report.summary || '').toLowerCase()] || '',
@@ -438,7 +460,7 @@ const DailyReportScreen = () => {
       console.error('Export error:', error);
       Alert.alert('Error', 'Failed to export Excel. Please try again.');
     }
-  }, [filtered, filterDate, materialUnitMap]);
+  }, [filterDate, materialUnitMap, reports.length, reportsTotal, request]);
 
   return (
     <Screen>
@@ -574,12 +596,17 @@ const DailyReportScreen = () => {
               <Text style={[styles.actionText, { color: t.colors.text }]}>▶</Text>
             </Pressable>
           </View>
-          {loading || filtered.length > 0 ? (
+          {loading || reports.length > 0 ? (
             <>
               <Text style={[styles.tableTitle, { color: t.colors.text }]}>Saved Reports</Text>
+              {!loading && reportsTotal > 0 ? (
+                <Text style={[styles.muted, { color: t.colors.textSecondary, marginBottom: 8 }]}>
+                  {tr('dailyReport.showingOf', { loaded: reports.length, total: reportsTotal })}
+                </Text>
+              ) : null}
               <View style={[styles.table, { borderColor: t.colors.border }]}>
                 <FlatList
-                  data={loading ? Array.from({ length: 5 }).map((_, idx) => ({ id: `report-skeleton-${idx}`, __skeleton: true })) : filtered}
+                  data={loading ? Array.from({ length: 5 }).map((_, idx) => ({ id: `report-skeleton-${idx}`, __skeleton: true })) : reports}
                   keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
                   scrollEnabled={false}
                   initialNumToRender={6}
@@ -605,9 +632,29 @@ const DailyReportScreen = () => {
                   }
                   renderItem={renderReportItem}
                   getItemLayout={getItemLayout}
+                  ListFooterComponent={
+                    !loading && reportsTotal > reports.length ? (
+                      <Pressable
+                        onPress={loadMoreReports}
+                        disabled={loadingMore}
+                        style={[
+                          styles.loadMoreBtn,
+                          {
+                            borderColor: t.colors.border,
+                            backgroundColor: t.colors.card,
+                            opacity: loadingMore ? 0.6 : 1
+                          }
+                        ]}
+                      >
+                        <Text style={[styles.loadMoreText, { color: t.colors.primary }]}>
+                          {loadingMore ? tr('dailyReport.loadingMore') : tr('dailyReport.loadMore')}
+                        </Text>
+                      </Pressable>
+                    ) : null
+                  }
                 />
               </View>
-              {!loading && filtered.length > 0 && (
+              {!loading && reports.length > 0 && (
                 <View style={styles.exportContainer}>
                   <Pressable
                     style={[styles.exportButton, { backgroundColor: getRGBA(t.colors.danger, 0.1), borderColor: t.colors.danger }]}
@@ -662,6 +709,13 @@ const styles = StyleSheet.create({
   deleteBtn: {},
   deleteText: {},
   muted: { marginBottom: 8 },
+  loadMoreBtn: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1
+  },
+  loadMoreText: { fontSize: 15, fontWeight: '600' },
   // Empty/skeleton styles moved to shared components
   filterRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   smallBtn: { paddingVertical: 8, paddingHorizontal: 12 },
