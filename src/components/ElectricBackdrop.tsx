@@ -40,8 +40,8 @@ function ThunderBoltGraphic({ isDark, width, height, gradientId }) {
   const core = isDark ? '#f8fafc' : '#ffffff';
   const mid = isDark ? '#bae6fd' : '#e0f2fe';
   const edge = isDark ? '#38bdf8' : '#60a5fa';
-  const glowOuter = isDark ? 'rgba(56, 189, 248, 0.35)' : 'rgba(59, 130, 246, 0.28)';
-  const glowMid = isDark ? 'rgba(125, 211, 252, 0.45)' : 'rgba(96, 165, 250, 0.38)';
+  const glowOuter = isDark ? 'rgba(56, 189, 248, 0.22)' : 'rgba(59, 130, 246, 0.18)';
+  const glowMid = isDark ? 'rgba(125, 211, 252, 0.28)' : 'rgba(96, 165, 250, 0.26)';
 
   const renderMainLayers = (d) => (
     <>
@@ -52,7 +52,7 @@ function ThunderBoltGraphic({ isDark, width, height, gradientId }) {
         strokeWidth={14}
         strokeLinecap="round"
         strokeLinejoin="round"
-        opacity={0.48}
+        opacity={0.34}
       />
       <Path
         d={d}
@@ -61,7 +61,7 @@ function ThunderBoltGraphic({ isDark, width, height, gradientId }) {
         strokeWidth={6}
         strokeLinecap="round"
         strokeLinejoin="round"
-        opacity={0.72}
+        opacity={0.52}
       />
       <Path
         d={d}
@@ -84,7 +84,7 @@ function ThunderBoltGraphic({ isDark, width, height, gradientId }) {
         strokeWidth={5}
         strokeLinecap="round"
         strokeLinejoin="round"
-        opacity={0.32}
+        opacity={0.22}
       />
       <Path
         d={d}
@@ -93,7 +93,7 @@ function ThunderBoltGraphic({ isDark, width, height, gradientId }) {
         strokeWidth={1.25}
         strokeLinecap="round"
         strokeLinejoin="round"
-        opacity={0.88}
+        opacity={0.62}
       />
     </>
   );
@@ -125,7 +125,7 @@ function flashStep(to, ms, easing = Easing.linear) {
  * Uses short durations + exponential easing where real strikes feel “instant on, slower decay”.
  */
 function buildRealisticThunderBurst(isDark) {
-  const peak = isDark ? r(0.58, 0.84) : r(0.26, 0.44);
+  const peak = isDark ? r(0.42, 0.62) : r(0.18, 0.32);
   const pick = Math.random();
   const steps = [];
 
@@ -215,13 +215,13 @@ export default function ElectricBackdrop({ isDark }) {
 
   useEffect(() => {
     if (reduceMotion) {
-      pulse.value = 0.55;
+      pulse.value = 0.4;
       sweep.value = 0;
       flash.value = 0;
       return;
     }
     pulse.value = withRepeat(
-      withTiming(0.72, { duration: 5200, easing: Easing.inOut(Easing.sin) }),
+      withTiming(0.52, { duration: 5200, easing: Easing.inOut(Easing.sin) }),
       -1,
       true
     );
@@ -286,9 +286,9 @@ export default function ElectricBackdrop({ isDark }) {
   }));
 
   const boltStyle = useAnimatedStyle(() => {
-    const o = interpolate(flash.value, [0, 0.15, 0.5, 1], [0, 0.85, 1, 0.95], 'clamp');
+    const o = interpolate(flash.value, [0, 0.15, 0.5, 1], [0, 0.62, 0.78, 0.72], 'clamp');
     return {
-      opacity: Math.min(1, o * 1.15)
+      opacity: Math.min(1, o * 0.88)
     };
   });
 
@@ -324,7 +324,7 @@ export default function ElectricBackdrop({ isDark }) {
           style={StyleSheet.absoluteFill}
         />
         <AnimatedLinearGradient
-          colors={['transparent', 'rgba(37,99,235,0.07)', 'transparent']}
+          colors={['transparent', 'rgba(37,99,235,0.045)', 'transparent']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[StyleSheet.absoluteFill, glowStyle]}
@@ -332,7 +332,7 @@ export default function ElectricBackdrop({ isDark }) {
         {!reduceMotion && (
           <Animated.View style={[styles.sweepWrap, sweepStyle]} pointerEvents="none">
             <LinearGradient
-              colors={['transparent', 'rgba(59,130,246,0.1)', 'transparent']}
+              colors={['transparent', 'rgba(59,130,246,0.055)', 'transparent']}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.sweepBand}
@@ -364,7 +364,7 @@ export default function ElectricBackdrop({ isDark }) {
         style={StyleSheet.absoluteFill}
       />
       <AnimatedLinearGradient
-        colors={['transparent', 'rgba(56,189,248,0.12)', 'rgba(34,211,238,0.05)', 'transparent']}
+        colors={['transparent', 'rgba(56,189,248,0.065)', 'rgba(34,211,238,0.028)', 'transparent']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[StyleSheet.absoluteFill, glowStyle]}
@@ -372,7 +372,7 @@ export default function ElectricBackdrop({ isDark }) {
       {!reduceMotion && (
         <Animated.View style={[styles.sweepWrap, sweepStyle]} pointerEvents="none">
           <LinearGradient
-            colors={['transparent', 'rgba(165,243,252,0.08)', 'transparent']}
+            colors={['transparent', 'rgba(165,243,252,0.045)', 'transparent']}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={styles.sweepBand}
@@ -398,13 +398,13 @@ const styles = StyleSheet.create({
   sweepBand: {
     width: '140%',
     height: '100%',
-    opacity: 0.9
+    opacity: 0.58
   },
   flashLight: {
-    backgroundColor: 'rgba(255, 255, 255, 0.92)'
+    backgroundColor: 'rgba(255, 255, 255, 0.58)'
   },
   flashDark: {
-    backgroundColor: 'rgba(224, 242, 254, 0.55)'
+    backgroundColor: 'rgba(224, 242, 254, 0.34)'
   },
   boltWrap: {
     position: 'absolute',

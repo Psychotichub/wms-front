@@ -31,14 +31,14 @@ const getRGBA = (hex, alpha) => {
 const getStatusColor = (status, colors) => {
   switch (status) {
     case 'completed':
-      return colors.success;
+      return colors.statusCompleted;
     case 'in_progress':
-      return colors.primary;
+      return colors.statusInProgress;
     case 'cancelled':
-      return colors.danger;
+      return colors.statusCancelled;
     case 'pending':
     default:
-      return colors.warning;
+      return colors.statusPending;
   }
 };
 

@@ -59,7 +59,7 @@ const SettingsScreen = () => {
   const { user, logout, apiUrl, getSites, addSite, setActiveSite, request } = useAuth();
   const t = useThemeTokens();
   const { t: tr } = useI18n();
-  const { themePreference, setThemePreference } = useTheme();
+  const { themePreference, setThemePreference, spacingDensity, setSpacingDensity } = useTheme();
   const [sites, setSites] = useState([]);
   const [activeSite, setActiveSiteState] = useState(user?.site || '');
   const [newSite, setNewSite] = useState('');
@@ -330,6 +330,46 @@ const SettingsScreen = () => {
                     : opt === 'light'
                       ? tr('settings.themeLight')
                       : tr('settings.themeDark')}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={[styles.themeHelper, { color: t.colors.textSecondary, marginTop: t.spacing.lg }]}>
+            {tr('settings.spacingDensity')}
+          </Text>
+          <View style={styles.themeRow}>
+            {(['compact', 'default', 'comfortable']).map((opt) => (
+              <Pressable
+                key={opt}
+                onPress={() => setSpacingDensity(opt)}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  opt === 'compact'
+                    ? tr('settings.spacingDensityA11yCompact')
+                    : opt === 'comfortable'
+                      ? tr('settings.spacingDensityA11yComfortable')
+                      : tr('settings.spacingDensityA11yDefault')
+                }
+                accessibilityState={{ selected: spacingDensity === opt }}
+                style={({ focused }) => [
+                  styles.themeChip,
+                  { borderColor: t.colors.border, backgroundColor: t.colors.card },
+                  spacingDensity === opt && { borderColor: t.colors.primary, borderWidth: 2 },
+                  Platform.OS === 'web' &&
+                    focused && {
+                      outlineWidth: 2,
+                      outlineStyle: 'solid',
+                      outlineColor: t.colors.focusRing,
+                      outlineOffset: 2
+                    }
+                ]}
+              >
+                <Text style={[styles.themeChipText, { color: t.colors.text }]}>
+                  {opt === 'compact'
+                    ? tr('settings.spacingDensityCompact')
+                    : opt === 'comfortable'
+                      ? tr('settings.spacingDensityComfortable')
+                      : tr('settings.spacingDensityDefault')}
                 </Text>
               </Pressable>
             ))}

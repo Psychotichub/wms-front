@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { baseColors, radii, spacing, typography } from './colors';
+import { baseColors, radii, spacing, typography, semanticStatusColors, chartColors } from './colors';
 
 export const lightTheme = {
   mode: 'light',
@@ -18,7 +18,9 @@ export const lightTheme = {
     info: baseColors.info,
     focusRing: 'rgba(8, 145, 178, 0.45)',
     onPrimary: '#ffffff',
-    accent: '#7c3aed'
+    accent: '#7c3aed',
+    ...semanticStatusColors.light,
+    ...chartColors.light
   },
   radii,
   spacing,

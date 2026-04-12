@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { baseColors, radii, spacing, typography } from './colors';
+import { baseColors, radii, spacing, typography, semanticStatusColors, chartColors } from './colors';
 
 export const darkTheme = {
   mode: 'dark',
@@ -19,7 +19,9 @@ export const darkTheme = {
     info: '#a78bfa',
     focusRing: 'rgba(34, 211, 238, 0.55)',
     onPrimary: '#020617',
-    accent: '#c084fc'
+    accent: '#c084fc',
+    ...semanticStatusColors.dark,
+    ...chartColors.dark
   },
   radii,
   spacing,

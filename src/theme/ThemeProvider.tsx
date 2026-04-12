@@ -1,14 +1,56 @@
 // @ts-nocheck
-import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from 'react';
-import { ActivityIndicator, Appearance, StyleSheet, View } from 'react-native';
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback
+} from 'react';
+import { ActivityIndicator, Appearance, Platform, StyleSheet, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts, PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans';
 import { lightTheme } from './light';
 import { darkTheme } from './dark';
 import { typography as baseTypography, fontFamilies } from './colors';
 import { elevation } from './elevation';
+import {
+  SPACING_DENSITY_STORAGE_KEY,
+  readStoredSpacingDensitySync,
+  scaleThemeSpacing,
+  isValidSpacingDensity
+} from './spacingDensity';
 
 const THEME_STORAGE_KEY = '@wms_theme_preference';
+
+/** Web: read before first paint so font/settings loaders match saved light/dark (AsyncStorage is async). */
+function readStoredThemePreferenceSync() {
+  if (Platform.OS !== 'web' || typeof localStorage === 'undefined') return null;
+  try {
+    const v = localStorage.getItem(THEME_STORAGE_KEY);
+    if (v === 'light' || v === 'dark' || v === 'system') return v;
+  } catch {
+    /* private mode / denied */
+  }
+  return null;
+}
+
+function preferencesBootstrap() {
+  const syncTheme = readStoredThemePreferenceSync();
+  const syncDensity = readStoredSpacingDensitySync();
+  return {
+    themePreference: syncTheme ?? 'system',
+    /** True when theme was read from localStorage (web) — skip blocking on AsyncStorage. */
+    themeStorageKnown: syncTheme !== null,
+    spacingDensity: isValidSpacingDensity(syncDensity) ? syncDensity : 'default'
+  };
+}
+
+function loaderColorsForMode(mode) {
+  const base = mode === 'dark' ? darkTheme : lightTheme;
+  return { backgroundColor: base.colors.background, spinner: base.colors.primary };
+}
 
 const ThemeContext = createContext({
   theme: lightTheme,
@@ -37,19 +79,29 @@ function mergeTypography(fontsLoaded) {
 
 export const ThemeProvider = ({ children }) => {
   const [fontsLoaded, fontError] = useFonts(fontSource);
-  const [themePreference, setThemePreferenceState] = useState('system');
-  const [hydrated, setHydrated] = useState(false);
+  const boot = useMemo(() => preferencesBootstrap(), []);
+  const [themePreference, setThemePreferenceState] = useState(boot.themePreference);
+  const [spacingDensity, setSpacingDensityState] = useState(boot.spacingDensity);
+  const [hydrated, setHydrated] = useState(boot.themeStorageKnown);
 
   const systemScheme = Appearance.getColorScheme();
   const [system, setSystem] = useState(systemScheme);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const stored = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-        if (!cancelled && (stored === 'system' || stored === 'light' || stored === 'dark')) {
-          setThemePreferenceState(stored);
+        const pairs = await AsyncStorage.multiGet([THEME_STORAGE_KEY, SPACING_DENSITY_STORAGE_KEY]);
+        const map = Object.fromEntries(pairs);
+        if (!cancelled) {
+          const storedTheme = map[THEME_STORAGE_KEY];
+          if (storedTheme === 'system' || storedTheme === 'light' || storedTheme === 'dark') {
+            setThemePreferenceState(storedTheme);
+          }
+          const storedDensity = map[SPACING_DENSITY_STORAGE_KEY];
+          if (isValidSpacingDensity(storedDensity)) {
+            setSpacingDensityState(storedDensity);
+          }
         }
       } catch {
         /* ignore */
@@ -85,35 +137,53 @@ export const ThemeProvider = ({ children }) => {
     }
   }, []);
 
+  const setSpacingDensity = useCallback(async (value) => {
+    if (!isValidSpacingDensity(value)) return;
+    setSpacingDensityState(value);
+    try {
+      await AsyncStorage.setItem(SPACING_DENSITY_STORAGE_KEY, value);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const palette = useMemo(() => {
     const base = resolvedMode === 'dark' ? darkTheme : lightTheme;
     const typo = mergeTypography(Boolean(fontsLoaded) && !fontError);
-    return { ...base, typography: typo };
-  }, [resolvedMode, fontsLoaded, fontError]);
+    return {
+      ...base,
+      typography: typo,
+      spacing: scaleThemeSpacing(base.spacing, spacingDensity)
+    };
+  }, [resolvedMode, fontsLoaded, fontError, spacingDensity]);
 
   const value = useMemo(
     () => ({
       theme: palette,
       themePreference,
       setThemePreference,
+      spacingDensity,
+      setSpacingDensity,
       resolvedMode,
       fontsLoaded: fontsLoaded || !!fontError
     }),
-    [palette, themePreference, setThemePreference, resolvedMode, fontsLoaded, fontError]
+    [palette, themePreference, setThemePreference, spacingDensity, setSpacingDensity, resolvedMode, fontsLoaded, fontError]
   );
+
+  const loaderChrome = useMemo(() => loaderColorsForMode(resolvedMode), [resolvedMode]);
 
   if (!fontsLoaded && !fontError) {
     return (
-      <View style={loaderStyles.container}>
-        <ActivityIndicator size="large" color="#22d3ee" accessibilityLabel="Loading fonts" />
+      <View style={[loaderStyles.container, { backgroundColor: loaderChrome.backgroundColor }]}>
+        <ActivityIndicator size="large" color={loaderChrome.spinner} accessibilityLabel="Loading fonts" />
       </View>
     );
   }
 
   if (!hydrated) {
     return (
-      <View style={loaderStyles.container}>
-        <ActivityIndicator size="large" color="#22d3ee" accessibilityLabel="Loading settings" />
+      <View style={[loaderStyles.container, { backgroundColor: loaderChrome.backgroundColor }]}>
+        <ActivityIndicator size="large" color={loaderChrome.spinner} accessibilityLabel="Loading settings" />
       </View>
     );
   }
@@ -125,8 +195,7 @@ const loaderStyles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#020617'
+    alignItems: 'center'
   }
 });
 
