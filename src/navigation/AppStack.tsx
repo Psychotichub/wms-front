@@ -17,7 +17,7 @@ import { selectActiveRouteName } from './selectActiveRouteName';
 
 const Stack = createNativeStackNavigator();
 
-function AppHeaderRight({ navigation, user, logout, tr, t, isDark, toggleMode, safeUnreadCount }) {
+function AppHeaderRight({ navigation, user, tr, t, isDark, toggleMode, safeUnreadCount }) {
   const routeName = useNavigationState((state) => selectActiveRouteName(state));
   const [starred, setStarred] = useState(false);
 
@@ -76,20 +76,6 @@ function AppHeaderRight({ navigation, user, logout, tr, t, isDark, toggleMode, s
       {user ? (
         <Pressable
           style={styles.notifBtn}
-          onPress={() => navigation.navigate('Global Search')}
-          accessibilityRole="button"
-          accessibilityLabel={tr('nav.search')}
-        >
-          <Ionicons
-            name="search-outline"
-            size={Platform.OS === 'web' ? 18 : 20}
-            color={t.colors.text}
-          />
-        </Pressable>
-      ) : null}
-      {user ? (
-        <Pressable
-          style={styles.notifBtn}
           onPress={() => navigation.navigate('Notifications')}
           accessibilityRole="button"
           accessibilityLabel={
@@ -111,32 +97,25 @@ function AppHeaderRight({ navigation, user, logout, tr, t, isDark, toggleMode, s
         </Pressable>
       ) : null}
 
-      <Pressable
-        style={[styles.cta, { backgroundColor: t.colors.primary }]}
-        onPress={() => {
-          if (user) logout();
-          else navigation.navigate('Login');
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={user ? tr('nav.logout') : tr('nav.login')}
-      >
-        <Ionicons
-          name={user ? 'log-out-outline' : 'log-in-outline'}
-          size={16}
-          color={t.colors.onPrimary}
-        />
-        {Platform.OS !== 'web' && (
-          <Text style={[styles.ctaText, { color: t.colors.onPrimary }]}>
-            {user ? tr('nav.logout') : tr('nav.login')}
-          </Text>
-        )}
-      </Pressable>
+      {!user ? (
+        <Pressable
+          style={[styles.cta, { backgroundColor: t.colors.primary }]}
+          onPress={() => navigation.navigate('Login')}
+          accessibilityRole="button"
+          accessibilityLabel={tr('nav.login')}
+        >
+          <Ionicons name="log-in-outline" size={16} color={t.colors.onPrimary} />
+          {Platform.OS !== 'web' && (
+            <Text style={[styles.ctaText, { color: t.colors.onPrimary }]}>{tr('nav.login')}</Text>
+          )}
+        </Pressable>
+      ) : null}
     </View>
   );
 }
 
 const AppStack = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { unreadCount } = useNotifications();
   const { setThemePreference } = useTheme();
   const { toggleDrawer } = useDrawer();
@@ -240,7 +219,6 @@ const AppStack = () => {
           <AppHeaderRight
             navigation={navigation}
             user={user}
-            logout={logout}
             tr={tr}
             t={t}
             isDark={isDark}

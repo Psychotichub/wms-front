@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Pressable, Alert, FlatList } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Pressable, Alert, FlatList, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
@@ -412,9 +412,9 @@ const TodoListScreen = () => {
       return;
     }
     
-    // For web compatibility, use window.confirm
-    const isWeb = typeof window !== 'undefined';
-    
+    // RN defines `window`; only real browsers should use window.confirm
+    const isWeb = Platform.OS === 'web';
+
     if (isWeb) {
       const shouldDelete = window.confirm(tr('todos.confirmDeleteWeb'));
       
