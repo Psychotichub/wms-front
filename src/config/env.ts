@@ -9,6 +9,12 @@ const normalizeValue = (value) => {
   return value.trim();
 };
 
+const parseBoolean = (value, defaultValue = false) => {
+  const normalized = normalizeValue(value).toLowerCase();
+  if (!normalized) return defaultValue;
+  return ['1', 'true', 'yes', 'on', 'enabled'].includes(normalized);
+};
+
 const getEnvValue = (name) => {
   // Expo injects EXPO_PUBLIC_* variables into process.env at build time
   // Check process.env first (works in both Expo Go and dev builds)
@@ -93,6 +99,8 @@ const getAdminSignupCode = () => getEnvValue('EXPO_PUBLIC_ADMIN_SIGNUP_CODE');
 
 const getWebPushVapidPublicKey = () => getEnvValue('EXPO_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY');
 
+const isLocationPagesEnabled = () => parseBoolean(getEnvValue('EXPO_PUBLIC_ENABLE_LOCATION_PAGES'), false);
+
 const requireWebPushVapidPublicKey = () =>
   requireEnv(
     'EXPO_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY',
@@ -119,7 +127,7 @@ const validatePublicEnv = (options = {}) => {
   }
 };
 
-module.exports = {
+export {
   getAppEnv,
   getApiUrlEnv,
   requireApiUrlEnv,
@@ -127,6 +135,7 @@ module.exports = {
   requireGoogleMapsApiKeyEnv,
   getAdminSignupCode,
   getWebPushVapidPublicKey,
+  isLocationPagesEnabled,
   requireWebPushVapidPublicKey,
   validatePublicEnv,
 };

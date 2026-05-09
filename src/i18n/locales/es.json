@@ -970,6 +970,10 @@
     "filterLocation": "Ubicación",
     "durationFormat": "{{h}}h {{m}}m"
   },
+  "locationFeature": {
+    "soonTitle": "Próximamente",
+    "soonMessage": "Las páginas basadas en ubicación no están disponibles temporalmente. Se habilitarán en una próxima actualización."
+  },
   "isolation": {
     "title": "Prueba de aislamiento",
     "loading": "Cargando pruebas…",

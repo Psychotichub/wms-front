@@ -970,6 +970,10 @@
     "filterLocation": "Location",
     "durationFormat": "{{h}}h {{m}}m"
   },
+  "locationFeature": {
+    "soonTitle": "Available soon",
+    "soonMessage": "Location-based pages are temporarily unavailable. They will be enabled in a future update."
+  },
   "isolation": {
     "title": "Isolation test",
     "loading": "Loading isolation tests…",

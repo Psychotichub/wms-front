@@ -5,7 +5,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import ElectricBackdrop from './ElectricBackdrop';
 
 /**
- * Renders the electric / lightning backdrop once for the whole app (auth + main stacks).
+ * Renders the app backdrop once for the whole app (auth + main stacks).
  * Must sit inside ThemeProvider.
  */
 export default function GlobalAppBackground({ children }) {

@@ -1,5 +1,7 @@
 // @ts-nocheck
 /** Screens shown as bottom tabs inside `MainTabs` */
+const { isLocationPagesEnabled } = require('../config/env');
+
 export const MAIN_TAB_ROUTE_NAMES = ['Dashboard', 'Daily Report', 'My Tasks'];
 
 /** Labels for web breadcrumbs (route name → display) */
@@ -113,20 +115,32 @@ export const appScreenConfig = [
   },
   {
     name: 'Location Selection',
-    getComponent: () => require('../screens/LocationSelectionScreen').default
+    getComponent: () =>
+      isLocationPagesEnabled()
+        ? require('../screens/LocationSelectionScreen').default
+        : require('../screens/LocationAvailableSoonScreen').default
   },
   {
     name: 'Attendance Status',
-    getComponent: () => require('../screens/AttendanceStatusScreen').default,
+    getComponent: () =>
+      isLocationPagesEnabled()
+        ? require('../screens/AttendanceStatusScreen').default
+        : require('../screens/LocationAvailableSoonScreen').default,
     drawer: { label: 'Attendance Status', icon: 'time-outline' }
   },
   {
     name: 'Attendance History',
-    getComponent: () => require('../screens/AttendanceHistoryScreen').default
+    getComponent: () =>
+      isLocationPagesEnabled()
+        ? require('../screens/AttendanceHistoryScreen').default
+        : require('../screens/LocationAvailableSoonScreen').default
   },
   {
     name: 'Manage Locations',
-    getComponent: () => require('../screens/ManageLocationsScreen').default,
+    getComponent: () =>
+      isLocationPagesEnabled()
+        ? require('../screens/ManageLocationsScreen').default
+        : require('../screens/LocationAvailableSoonScreen').default,
     roles: ['admin']
   },
   {

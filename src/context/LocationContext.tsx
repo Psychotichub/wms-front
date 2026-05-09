@@ -19,6 +19,7 @@ import { AppState, Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { useAuth } from './AuthContext';
 import { BACKGROUND_LOCATION_TASK } from '../tasks/backgroundLocationTask';
+import { isLocationPagesEnabled } from '../config/env';
 
 const LocationContext = createContext();
 
@@ -52,7 +53,7 @@ export const useLocation = () => {
   return context;
 };
 
-export const LocationProvider = ({ children }) => {
+const InternalLocationProvider = ({ children }) => {
   const { token, request, user, apiUrl } = useAuth();
 
   const [location, setLocation] = useState(null);
@@ -1891,6 +1892,48 @@ export const LocationProvider = ({ children }) => {
   };
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
+};
+
+const noopAsync = async () => false;
+const noop = () => {};
+const disabledLocationContextValue = {
+  location: null,
+  locationPermission: false,
+  isTracking: false,
+  geofences: [],
+  currentGeofence: null,
+  selectedGeofence: null,
+  selectedGeofenceId: null,
+  attendanceStatus: {
+    isCheckedIn: false,
+    isCheckedOut: false,
+    isManualCheckout: false,
+    checkInTime: null,
+    checkOutTime: null,
+    nextCheckInTime: null,
+    locationName: null,
+    elapsedTime: 0,
+    dayKey: null
+  },
+  workingHours: { startTime: '08:00', endTime: '16:30' },
+  requestPermissions: noopAsync,
+  getCurrentLocation: async () => null,
+  startLocationTracking: noopAsync,
+  stopLocationTracking: noopAsync,
+  loadGeofences: async () => [],
+  manualCheckOut: noopAsync,
+  clearGeofenceCooldowns: noop,
+  verifyAttendanceStatus: async () => null,
+  setSelectedGeofence: noopAsync,
+  setWorkingHoursForLocation: noop,
+  isWithinTrackingWindow: () => false
+};
+
+export const LocationProvider = ({ children }) => {
+  if (!isLocationPagesEnabled()) {
+    return <LocationContext.Provider value={disabledLocationContextValue}>{children}</LocationContext.Provider>;
+  }
+  return <InternalLocationProvider>{children}</InternalLocationProvider>;
 };
 
 export default LocationContext;
