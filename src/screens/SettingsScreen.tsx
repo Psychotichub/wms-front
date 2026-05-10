@@ -424,37 +424,6 @@ const SettingsScreen = () => {
           </>
         ) : null}
 
-        <SectionHeader title={tr('settings.locations')} t={t} />
-        <View style={styles.section}>
-          <SettingItem
-            icon="location-outline"
-            label={tr('settings.locationSelection')}
-            value={tr('settings.locationSelectionValue')}
-            onPress={() => navigation.navigate('Location Selection')}
-            t={t}
-          />
-          {isAdmin ? (
-            <SettingItem
-              icon="map-outline"
-              label={tr('settings.manageLocations')}
-              value={tr('settings.manageLocationsValue')}
-              onPress={() => navigation.navigate('Manage Locations')}
-              t={t}
-            />
-          ) : null}
-        </View>
-
-        <SectionHeader title={tr('settings.attendance')} t={t} />
-        <View style={styles.section}>
-          <SettingItem
-            icon="document-text-outline"
-            label={tr('settings.attendanceHistory')}
-            value={tr('settings.attendanceHistoryValue')}
-            onPress={() => navigation.navigate('Attendance History')}
-            t={t}
-          />
-        </View>
-
         {isAdmin ? (
           <>
             <SectionHeader title={tr('settings.userManagement')} t={t} />

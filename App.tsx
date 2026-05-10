@@ -6,7 +6,6 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { validateRequiredConfig } from './src/config/runtime';
 import { resolveT } from './src/i18n/resolveT';
 import { initSentry, captureException } from './src/config/sentry';
-import './src/tasks/backgroundLocationTask';
 
 initSentry();
 

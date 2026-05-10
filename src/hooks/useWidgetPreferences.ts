@@ -12,7 +12,6 @@ const DEFAULT_WIDGETS = {
   workTrends: false,
   topPerformers: false,
   quickActions: true,
-  mapView: false,
 };
 
 export const useWidgetPreferences = () => {
@@ -30,7 +29,11 @@ export const useWidgetPreferences = () => {
         const stored = await kvStorage.getItem(storageKey);
         if (stored) {
           const parsed = JSON.parse(stored);
-          setWidgets({ ...DEFAULT_WIDGETS, ...parsed });
+          const merged = { ...DEFAULT_WIDGETS };
+          for (const key of Object.keys(DEFAULT_WIDGETS)) {
+            if (parsed[key] !== undefined) merged[key] = parsed[key];
+          }
+          setWidgets(merged);
         }
       } catch (error) {
         console.error('Failed to load widget preferences:', error);

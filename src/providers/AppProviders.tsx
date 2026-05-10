@@ -6,7 +6,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '../context/AuthContext';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { NotificationProvider } from '../context/NotificationContext';
-import { LocationProvider } from '../context/LocationContext';
 import OfflineBanner from '../components/OfflineBanner';
 import GlobalAppBackground from '../components/GlobalAppBackground';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -22,9 +21,7 @@ const AppProviders = ({ children }) => {
                 <OfflineBanner />
                 <View style={styles.flex}>
                   <AuthProvider>
-                    <NotificationProvider>
-                      <LocationProvider>{children}</LocationProvider>
-                    </NotificationProvider>
+                    <NotificationProvider>{children}</NotificationProvider>
                   </AuthProvider>
                 </View>
               </View>

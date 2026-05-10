@@ -12,7 +12,6 @@ const WIDGET_I18N_KEYS = {
   workTrends: { label: 'dashboardWidgets.trendsLabel', description: 'dashboardWidgets.trendsDesc', icon: 'trending-up-outline' },
   topPerformers: { label: 'dashboardWidgets.performersLabel', description: 'dashboardWidgets.performersDesc', icon: 'trophy-outline' },
   quickActions: { label: 'dashboardWidgets.quickLabel', description: 'dashboardWidgets.quickDesc', icon: 'flash-outline' },
-  mapView: { label: 'dashboardWidgets.mapLabel', description: 'dashboardWidgets.mapDesc', icon: 'map-outline' },
 };
 
 const WidgetCustomizationModal = ({ visible, onClose, widgets, onToggleWidget, onReset }) => {

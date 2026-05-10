@@ -231,10 +231,7 @@ const EmployeeScreen = () => {
   const [message, setMessage] = useState('');
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
-  const [geofences, setGeofences] = useState([]);
-  const [loadingGeofences, setLoadingGeofences] = useState(false);
   const [employeePreferences, setEmployeePreferences] = useState({
-    selectedGeofenceId: null,
     workingHours: { startTime: '08:00', endTime: '16:30' }
   });
   const [loadingPreferences, setLoadingPreferences] = useState(false);
@@ -273,18 +270,6 @@ const EmployeeScreen = () => {
     }
   }, [request, tr]);
 
-  const loadGeofences = useCallback(async () => {
-    setLoadingGeofences(true);
-    try {
-      const data = await request('/api/locations/geofences');
-      setGeofences(data.geofences || []);
-    } catch (error) {
-      console.error('Failed to load geofences:', error);
-    } finally {
-      setLoadingGeofences(false);
-    }
-  }, [request]);
-
   const loadEmployeePreferences = useCallback(async (employeeId) => {
     if (!employeeId) return;
     setLoadingPreferences(true);
@@ -292,7 +277,6 @@ const EmployeeScreen = () => {
       const data = await request(`/api/employees/${employeeId}/preferences`);
       if (data?.preferences) {
         setEmployeePreferences({
-          selectedGeofenceId: data.preferences.selectedGeofenceId || null,
           workingHours: data.preferences.workingHours || { startTime: '08:00', endTime: '16:30' }
         });
       }
@@ -300,7 +284,6 @@ const EmployeeScreen = () => {
       console.error('Failed to load employee preferences:', error);
       // Set defaults if failed
       setEmployeePreferences({
-        selectedGeofenceId: null,
         workingHours: { startTime: '08:00', endTime: '16:30' }
       });
     } finally {
@@ -314,7 +297,6 @@ const EmployeeScreen = () => {
       await request(`/api/employees/${employeeId}/preferences`, {
         method: 'PUT',
         body: JSON.stringify({
-          selectedGeofenceId: employeePreferences.selectedGeofenceId,
           workingHours: employeePreferences.workingHours
         })
       });
@@ -355,7 +337,6 @@ const EmployeeScreen = () => {
     setShowForm(false);
     setShowPreferences(false);
     setEmployeePreferences({
-      selectedGeofenceId: null,
       workingHours: { startTime: '08:00', endTime: '16:30' }
     });
   };
@@ -409,10 +390,8 @@ const EmployeeScreen = () => {
     setShowForm(true);
     setShowPreferences(false);
     
-    // Load geofences and employee preferences when editing
-    await loadGeofences();
     await loadEmployeePreferences(employee._id);
-  }, [loadGeofences, loadEmployeePreferences]);
+  }, [loadEmployeePreferences]);
 
   const handleDelete = useCallback(async (id) => {
     const isWeb = Platform.OS === 'web';
@@ -628,54 +607,6 @@ const EmployeeScreen = () => {
                     ) : (
                       <>
                         <Text style={[styles.label, { color: t.colors.textSecondary, marginTop: 0 }]}>
-                          {tr('employee.defaultLocation')}
-                        </Text>
-                        {loadingGeofences ? (
-                          <Text style={[styles.helperText, { color: t.colors.textSecondary }]}>{tr('employee.loadingLocationsList')}</Text>
-                        ) : (
-                          <View style={styles.locationSelect}>
-                            {geofences.map((geofence) => (
-                              <Pressable
-                                key={geofence.id}
-                                style={[
-                                  styles.locationChip,
-                                  { borderColor: t.colors.border, backgroundColor: t.colors.card },
-                                  employeePreferences.selectedGeofenceId === geofence.id && {
-                                    borderColor: t.colors.primary,
-                                    backgroundColor: getRGBA(t.colors.primary, 0.1)
-                                  }
-                                ]}
-                                onPress={() => setEmployeePreferences({
-                                  ...employeePreferences,
-                                  selectedGeofenceId: employeePreferences.selectedGeofenceId === geofence.id ? null : geofence.id
-                                })}
-                              >
-                                <Text
-                                  style={[
-                                    styles.locationChipText,
-                                    { color: t.colors.text },
-                                    employeePreferences.selectedGeofenceId === geofence.id && {
-                                      color: t.colors.primary,
-                                      fontWeight: '700'
-                                    }
-                                  ]}
-                                >
-                                  {geofence.name}
-                                </Text>
-                                {employeePreferences.selectedGeofenceId === geofence.id && (
-                                  <Ionicons name="checkmark-circle" size={16} color={t.colors.primary} style={{ marginLeft: 4 }} />
-                                )}
-                              </Pressable>
-                            ))}
-                            {geofences.length === 0 && (
-                              <Text style={[styles.helperText, { color: t.colors.textSecondary }]}>
-                                {tr('employee.noLocationsManage')}
-                              </Text>
-                            )}
-                          </View>
-                        )}
-
-                        <Text style={[styles.label, { color: t.colors.textSecondary, marginTop: 16 }]}>
                           {tr('employee.workingHoursTitle')}
                         </Text>
                         <View style={styles.workingHoursRow}>
@@ -948,25 +879,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 12,
     borderWidth: 1
-  },
-  locationSelect: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12
-  },
-  locationChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    minWidth: 100
-  },
-  locationChipText: {
-    fontSize: 14,
-    fontWeight: '500'
   },
   workingHoursRow: {
     flexDirection: 'row',

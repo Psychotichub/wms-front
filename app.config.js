@@ -1,10 +1,7 @@
 // Expo automatically injects EXPO_PUBLIC_* variables at build time
-// No dotenv needed - Expo handles this for dev builds
 const apiUrl = process.env.EXPO_PUBLIC_API_URL ||
   process.env.EXPO_PUBLIC_API_URL_DEV ||
   null;
-const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || null;
-const googleMapsMapId = process.env.EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID || null;
 
 module.exports = {
   expo: {
@@ -22,7 +19,6 @@ module.exports = {
       scope: '/',
       themeColor: '#0891b2',
       description: 'Working Management System for efficient project and employee management',
-      // PWA settings
       orientation: 'portrait',
       display: 'standalone',
       startUrl: '/',
@@ -34,69 +30,16 @@ module.exports = {
     runtimeVersion: '1.0.0',
     extra: {
       apiUrl,
-      googleMapsApiKey,
-      googleMapsMapId,
       eas: {
         projectId: 'd1f4d263-2161-4968-a6eb-0a7f8de630f7'
       }
     },
-    plugins: [
-      'expo-font',
-      'expo-localization',
-      [
-        'expo-location',
-        {
-          locationAlwaysAndWhenInUsePermission: 'Allow WMS to access your location even when the app is closed to enable automatic attendance tracking.',
-          locationAlwaysPermission: 'Allow WMS to access your location even when the app is closed to enable automatic attendance tracking.',
-          locationWhenInUsePermission: 'Allow WMS to access your location to enable attendance tracking.',
-          isIosBackgroundLocationEnabled: true,
-          isAndroidBackgroundLocationEnabled: true
-        }
-      ],
-      // Add expo-build-properties plugin to inject Google Maps API key
-      [
-        'expo-build-properties',
-        {
-          android: {
-            manifestPlaceholders: {
-              googleMapsApiKey: googleMapsApiKey || ''
-            }
-          }
-        }
-      ]
-    ],
+    plugins: ['expo-font', 'expo-localization'],
     ios: {
-      bundleIdentifier: 'com.psychotic.wms',
-      infoPlist: {
-        NSLocationAlwaysAndWhenInUseUsageDescription: 'Allow WMS to access your location even when the app is closed to enable automatic attendance tracking.',
-        NSLocationAlwaysUsageDescription: 'Allow WMS to access your location even when the app is closed to enable automatic attendance tracking.',
-        NSLocationWhenInUseUsageDescription: 'Allow WMS to access your location to enable attendance tracking.',
-        UIBackgroundModes: ['location'],
-        // Google Maps API Key for iOS (set via environment variable)
-        GMSApiKey: googleMapsApiKey || ''
-      },
-      config: {
-        // Google Maps SDK configuration
-        googleMapsApiKey: googleMapsApiKey || ''
-      }
+      bundleIdentifier: 'com.psychotic.wms'
     },
     android: {
-      package: 'com.psychotic.wms',
-      permissions: [
-        'ACCESS_FINE_LOCATION',
-        'ACCESS_COARSE_LOCATION',
-        'ACCESS_BACKGROUND_LOCATION',
-        'FOREGROUND_SERVICE',
-        'FOREGROUND_SERVICE_LOCATION'
-      ],
-      // Add Google Maps API key configuration
-      config: {
-        googleMaps: {
-          apiKey: googleMapsApiKey || ''
-        }
-      }
+      package: 'com.psychotic.wms'
     }
-    // Note: With expo-build-properties plugin, Google Maps API key will be automatically
-    // injected into AndroidManifest.xml during EAS Build, so no manual native file editing needed.
   }
 };

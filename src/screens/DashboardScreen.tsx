@@ -10,7 +10,6 @@ import Screen from '../components/Screen';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
 import WidgetCustomizationModal from '../components/ui/WidgetCustomizationModal';
-import RealTimeMapWidget from '../components/ui/RealTimeMapWidget';
 import { useAuth } from '../context/AuthContext';
 import { useThemeTokens } from '../theme/ThemeProvider';
 import { useWidgetPreferences } from '../hooks/useWidgetPreferences';
@@ -235,7 +234,7 @@ const DashboardScreen = ({ navigation }) => {
         materials: materialsRes?.pagination?.total ?? materialsRes?.materials?.length ?? 0,
         panels: panelsRes?.panels?.length ?? 0
       });
-    } catch (_err) {
+    } catch {
       setCounts({ reports: '—', materials: '—', panels: '—' });
     } finally {
       setLoading(false);
@@ -457,13 +456,6 @@ const DashboardScreen = ({ navigation }) => {
           />
         )}
       </View>
-      )}
-
-      {/* Real-time Map View */}
-      {widgets.mapView && (
-        <View style={styles.section}>
-          <RealTimeMapWidget />
-        </View>
       )}
 
       {widgets.quickActions && (

@@ -1,7 +1,5 @@
 // @ts-nocheck
 /** Screens shown as bottom tabs inside `MainTabs` */
-const { isLocationPagesEnabled } = require('../config/env');
-
 export const MAIN_TAB_ROUTE_NAMES = ['Dashboard', 'Daily Report', 'My Tasks'];
 
 /** Labels for web breadcrumbs (route name → display) */
@@ -22,10 +20,6 @@ export const ROUTE_BREADCRUMB_LABELS = {
   'Todo List': 'Todos',
   'Task Detail': 'Task',
   Notifications: 'Notifications',
-  'Location Selection': 'Location',
-  'Attendance Status': 'Attendance',
-  'Attendance History': 'History',
-  'Manage Locations': 'Locations',
   'Isolation Test': 'Isolation',
   Setting: 'Settings',
   About: 'About',
@@ -112,36 +106,6 @@ export const appScreenConfig = [
   {
     name: 'Notifications',
     getComponent: () => require('../screens/NotificationsScreen').default
-  },
-  {
-    name: 'Location Selection',
-    getComponent: () =>
-      isLocationPagesEnabled()
-        ? require('../screens/LocationSelectionScreen').default
-        : require('../screens/LocationAvailableSoonScreen').default
-  },
-  {
-    name: 'Attendance Status',
-    getComponent: () =>
-      isLocationPagesEnabled()
-        ? require('../screens/AttendanceStatusScreen').default
-        : require('../screens/LocationAvailableSoonScreen').default,
-    drawer: { label: 'Attendance Status', icon: 'time-outline' }
-  },
-  {
-    name: 'Attendance History',
-    getComponent: () =>
-      isLocationPagesEnabled()
-        ? require('../screens/AttendanceHistoryScreen').default
-        : require('../screens/LocationAvailableSoonScreen').default
-  },
-  {
-    name: 'Manage Locations',
-    getComponent: () =>
-      isLocationPagesEnabled()
-        ? require('../screens/ManageLocationsScreen').default
-        : require('../screens/LocationAvailableSoonScreen').default,
-    roles: ['admin']
   },
   {
     name: 'Isolation Test',

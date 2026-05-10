@@ -9,24 +9,15 @@ const normalizeValue = (value) => {
   return value.trim();
 };
 
-const parseBoolean = (value, defaultValue = false) => {
-  const normalized = normalizeValue(value).toLowerCase();
-  if (!normalized) return defaultValue;
-  return ['1', 'true', 'yes', 'on', 'enabled'].includes(normalized);
-};
-
 const getEnvValue = (name) => {
-  // Expo injects EXPO_PUBLIC_* variables into process.env at build time
-  // Check process.env first (works in both Expo Go and dev builds)
   let value = normalizeValue(process.env[name]);
-  
-  // Fallback to expo config extra (from app.config.js)
+
   if (!value) {
     const configKey = name.replace('EXPO_PUBLIC_', '').toLowerCase();
     const configExtra = Constants.expoConfig?.extra || {};
     value = normalizeValue(configExtra[configKey]);
   }
-  
+
   return value;
 };
 
@@ -46,17 +37,15 @@ const getAppEnv = () => {
 const getApiUrlEnv = () => {
   const appEnv = getAppEnv();
   const isProdEnv = appEnv === 'production';
-  
-  // Try multiple sources
-  let apiUrl = 
+
+  let apiUrl =
     getEnvValue('EXPO_PUBLIC_API_URL') ||
     getEnvValue(isProdEnv ? 'EXPO_PUBLIC_API_URL_PROD' : 'EXPO_PUBLIC_API_URL_DEV');
-  
-  // Fallback to Constants.expoConfig.extra.apiUrl if available
+
   if (!apiUrl) {
     apiUrl = normalizeValue(Constants.expoConfig?.extra?.apiUrl);
   }
-  
+
   return apiUrl;
 };
 
@@ -73,33 +62,9 @@ const requireApiUrlEnv = () => {
   return value;
 };
 
-const getGoogleMapsApiKeyEnv = () => {
-  const appEnv = getAppEnv();
-  const isProdEnv = appEnv === 'production';
-  return (
-    getEnvValue('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY') ||
-    getEnvValue(isProdEnv ? 'EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_PROD' : 'EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_DEV')
-  );
-};
-
-const requireGoogleMapsApiKeyEnv = () => {
-  const appEnv = getAppEnv();
-  const isProdEnv = appEnv === 'production';
-  const fallbackName = isProdEnv ? 'EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_PROD' : 'EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_DEV';
-  const value = getGoogleMapsApiKeyEnv();
-  if (!value) {
-    throw new Error(
-      `[env] Missing Google Maps API key. Set EXPO_PUBLIC_GOOGLE_MAPS_API_KEY or ${fallbackName} in .env or app.config.js and restart Expo.`
-    );
-  }
-  return value;
-};
-
 const getAdminSignupCode = () => getEnvValue('EXPO_PUBLIC_ADMIN_SIGNUP_CODE');
 
 const getWebPushVapidPublicKey = () => getEnvValue('EXPO_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY');
-
-const isLocationPagesEnabled = () => parseBoolean(getEnvValue('EXPO_PUBLIC_ENABLE_LOCATION_PAGES'), false);
 
 const requireWebPushVapidPublicKey = () =>
   requireEnv(
@@ -108,20 +73,16 @@ const requireWebPushVapidPublicKey = () =>
   );
 
 const validatePublicEnv = (options = {}) => {
-  const { requireGoogleMapsKey = false, requireWebPushKey = false } = options;
-  
-  // Use getApiUrlEnv instead of requireApiUrlEnv to allow fallbacks
+  const { requireWebPushKey = false } = options;
+
   const apiUrl = getApiUrlEnv();
   if (!apiUrl) {
-    // Fail fast with clear error message
-    const errorMsg = '[env] Missing API base URL. Set EXPO_PUBLIC_API_URL in .env file and rebuild dev client with: npx expo run:android';
+    const errorMsg =
+      '[env] Missing API base URL. Set EXPO_PUBLIC_API_URL in .env file and rebuild dev client with: npx expo run:android';
     console.error('❌', errorMsg);
     throw new Error(errorMsg);
   }
-  
-  if (requireGoogleMapsKey) {
-    requireGoogleMapsApiKeyEnv();
-  }
+
   if (requireWebPushKey) {
     requireWebPushVapidPublicKey();
   }
@@ -131,11 +92,8 @@ export {
   getAppEnv,
   getApiUrlEnv,
   requireApiUrlEnv,
-  getGoogleMapsApiKeyEnv,
-  requireGoogleMapsApiKeyEnv,
   getAdminSignupCode,
   getWebPushVapidPublicKey,
-  isLocationPagesEnabled,
   requireWebPushVapidPublicKey,
   validatePublicEnv,
 };
