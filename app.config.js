@@ -12,6 +12,8 @@ module.exports = {
     icon: './assets/logo.png',
     platforms: ['ios', 'android', 'web'],
     web: {
+      // Single-page export: one index.html + client routing (EAS Hosting + Render static)
+      output: 'single',
       favicon: './assets/logo.png',
       name: 'working-management-system',
       shortName: 'WMS',
