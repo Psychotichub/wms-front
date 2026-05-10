@@ -253,6 +253,7 @@
     "emailRequiredTitle": "Correo obligatorio",
     "emailRequiredBody": "Introduce tu correo para reenviar la verificación.",
     "resendServerFail": "No se pudo reenviar el correo de verificación",
+    "resendEmailNotConfigured": "El correo no está configurado en el servidor. Pide al administrador que configure SMTP (EMAIL_HOST, EMAIL_USER, EMAIL_PASSWORD).",
     "emailSentTitle": "Correo enviado",
     "emailSentBody": "Se envió un nuevo mensaje de verificación. Revisa tu bandeja.",
     "resendTryAgain": "Error al reenviar. Inténtalo de nuevo."

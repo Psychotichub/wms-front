@@ -34,7 +34,7 @@ module.exports = {
         projectId: 'd1f4d263-2161-4968-a6eb-0a7f8de630f7'
       }
     },
-    plugins: ['expo-font', 'expo-localization'],
+    plugins: ['expo-font', 'expo-localization', '@sentry/react-native'],
     ios: {
       bundleIdentifier: 'com.psychotic.wms'
     },

@@ -39,6 +39,14 @@ const EmailVerificationScreen = () => {
   const [email, setEmail] = useState(route.params?.email || '');
   const [hasAutoVerified, setHasAutoVerified] = useState(false);
 
+  // Apply email from navigation params when they arrive (e.g. Login → verification)
+  useEffect(() => {
+    const paramEmail = route.params?.email;
+    if (typeof paramEmail === 'string' && paramEmail.trim()) {
+      setEmail(paramEmail.trim());
+    }
+  }, [route.params?.email]);
+
   /**
    * Verify email with token or code
    */
@@ -129,8 +137,15 @@ const EmailVerificationScreen = () => {
    * Resend verification email
    */
   const handleResendVerification = useCallback(async () => {
-    if (!email) {
-      Alert.alert(tr('verification.emailRequiredTitle'), tr('verification.emailRequiredBody'));
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!normalizedEmail) {
+      const t1 = tr('verification.emailRequiredTitle');
+      const b1 = tr('verification.emailRequiredBody');
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.alert) {
+        window.alert(`${t1}\n\n${b1}`);
+      } else {
+        Alert.alert(t1, b1);
+      }
       return;
     }
 
@@ -143,23 +158,43 @@ const EmailVerificationScreen = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email: normalizedEmail })
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || tr('verification.resendServerFail'));
+      const text = await response.text();
+      let data = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = {};
+        }
       }
 
-      Alert.alert(
-        tr('verification.emailSentTitle'),
-        tr('verification.emailSentBody'),
-        [{ text: tr('common.ok') }]
-      );
+      if (!response.ok) {
+        const msg =
+          data.message ||
+          (data.code === 'EMAIL_NOT_CONFIGURED'
+            ? tr('verification.resendEmailNotConfigured')
+            : tr('verification.resendServerFail'));
+        throw new Error(msg);
+      }
+
+      const title = tr('verification.emailSentTitle');
+      const body = tr('verification.emailSentBody');
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.alert) {
+        window.alert(`${title}\n\n${body}`);
+      } else {
+        Alert.alert(title, body, [{ text: tr('common.ok') }]);
+      }
     } catch (err) {
-      setError(err.message || tr('verification.resendTryAgain'));
-      Alert.alert(tr('common.error'), err.message || tr('verification.resendServerFail'));
+      const message = err.message || tr('verification.resendTryAgain');
+      setError(message);
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.alert) {
+        window.alert(`${tr('common.error')}\n\n${message}`);
+      } else {
+        Alert.alert(tr('common.error'), message);
+      }
     } finally {
       setIsResending(false);
     }
@@ -170,6 +205,8 @@ const EmailVerificationScreen = () => {
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         {/* Header Section */}
         <View style={styles.headerSection}>
@@ -291,7 +328,7 @@ const EmailVerificationScreen = () => {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
-                  editable={!email || !route.params?.email}
+                  editable={!isResending}
                 />
               </View>
             </View>
@@ -300,7 +337,7 @@ const EmailVerificationScreen = () => {
               <Button
                 title={isResending ? tr('verification.sendingBtn') : tr('verification.resendBtn')}
                 onPress={handleResendVerification}
-                disabled={isResending || !email}
+                disabled={isResending || !String(email).trim()}
                 variant="outline"
               />
             </View>

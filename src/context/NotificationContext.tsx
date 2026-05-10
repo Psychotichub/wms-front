@@ -1,9 +1,8 @@
 // @ts-nocheck
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import * as Notifications from 'expo-notifications';
+import { isRunningInExpoGo } from 'expo';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
 import { useAuth } from './AuthContext';
 import { registerWebPush } from '../utils/webPush';
 import { logError } from '../utils/telemetry';
@@ -12,14 +11,11 @@ import { navigateFromNotification } from '../utils/notificationNavigation';
 
 const NotificationContext = createContext();
 
-// Detect if running in Expo Go (limited notification support in SDK 53)
-const isExpoGo = () => {
-  // Expo Go has limited push notification support in SDK 53+
-  // Check if we're in a managed workflow (Expo Go)
-  return Constants.executionEnvironment === 'storeClient' ||
-         Constants.appOwnership === 'expo' ||
-         !Constants.expoConfig?.hostUri; // No hostUri indicates Expo Go
-};
+/** Load expo-notifications only outside Expo Go so DevicePushTokenAutoRegistration.fx does not run in Go (SDK 53+ spams ERROR on Android). */
+function requireNotifications() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('expo-notifications');
+}
 
 export const useNotifications = () => {
   const context = useContext(NotificationContext);
@@ -30,8 +26,9 @@ export const useNotifications = () => {
 };
 
 // Configure notification behavior (native only; skip web + Expo Go due to SDK limitations)
-if (Platform.OS !== 'web' && !isExpoGo()) {
+if (Platform.OS !== 'web' && !isRunningInExpoGo()) {
   try {
+    const Notifications = requireNotifications();
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: true,
@@ -39,7 +36,7 @@ if (Platform.OS !== 'web' && !isExpoGo()) {
         shouldSetBadge: true,
       }),
     });
-  } catch (_error) {
+  } catch {
     // Silently handle notification setup errors
   }
 }
@@ -77,14 +74,16 @@ export const NotificationProvider = ({ children }) => {
       // Web does not use Expo push tokens; avoid noisy warnings.
       return;
     }
-    if (isExpoGo()) {
-      // Skip push notifications in Expo Go (limited SDK 53 support)
+    if (isRunningInExpoGo()) {
+      // Skip push notifications in Expo Go (limited SDK 53+ support)
       return;
     }
 
     if (!Device.isDevice) {
       return;
     }
+
+    const Notifications = requireNotifications();
 
     try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -99,18 +98,18 @@ export const NotificationProvider = ({ children }) => {
         return;
       }
 
-      const token = (await Notifications.getExpoPushTokenAsync()).data;
-      setPushToken(token);
+      const expoPushToken = (await Notifications.getExpoPushTokenAsync()).data;
+      setPushToken(expoPushToken);
 
       // Send token to backend if user is logged in
-      if (user && token) {
+      if (user && expoPushToken) {
         try {
           await request('/api/notifications/preferences/push-token', {
             method: 'POST',
-            body: JSON.stringify({ pushToken: token }),
+            body: JSON.stringify({ pushToken: expoPushToken }),
             __suppress401Log: true
           });
-        } catch (_error) {
+        } catch {
           // Silently handle token update errors
         }
       }
@@ -190,7 +189,7 @@ export const NotificationProvider = ({ children }) => {
         setNotifications(prev => [...prev, ...(response.notifications || [])]);
       }
       setUnreadCount(response.unreadCount || 0);
-    } catch (_error) {
+    } catch {
       // Silently handle notification loading errors
     }
   };
@@ -206,7 +205,7 @@ export const NotificationProvider = ({ children }) => {
         __suppress401Log: true
       });
       setPreferences(response.preferences);
-    } catch (_error) {
+    } catch {
       // Silently handle preference loading errors
     }
   };
@@ -244,7 +243,7 @@ export const NotificationProvider = ({ children }) => {
         )
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (_error) {
+    } catch {
       // Silently handle mark as read errors
     }
   };
@@ -261,7 +260,7 @@ export const NotificationProvider = ({ children }) => {
         prev.map(notif => ({ ...notif, status: 'read', readAt: new Date() }))
       );
       setUnreadCount(0);
-    } catch (_error) {
+    } catch {
       // Silently handle mark all as read errors
     }
   };
@@ -302,10 +301,11 @@ export const NotificationProvider = ({ children }) => {
 
   // Set up notification listeners (intentionally run once)
   useEffect(() => {
-    if (isExpoGo()) {
+    if (Platform.OS === 'web' || isRunningInExpoGo()) {
       return;
     }
 
+    const Notifications = requireNotifications();
     let notificationListener, responseListener;
 
     try {
@@ -344,7 +344,7 @@ export const NotificationProvider = ({ children }) => {
           }
         }
       });
-    } catch (_error) {
+    } catch {
       // Silently handle listener setup errors
     }
 
@@ -356,7 +356,7 @@ export const NotificationProvider = ({ children }) => {
         if (responseListener && typeof responseListener.remove === 'function') {
           responseListener.remove();
         }
-      } catch (_error) {
+      } catch {
         // Silently handle listener removal errors
       }
     };

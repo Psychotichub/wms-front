@@ -253,6 +253,7 @@
     "emailRequiredTitle": "Email required",
     "emailRequiredBody": "Enter your email address to resend the verification message.",
     "resendServerFail": "Failed to resend verification email",
+    "resendEmailNotConfigured": "Email is not configured on the server. Ask an admin to set SMTP (EMAIL_HOST, EMAIL_USER, EMAIL_PASSWORD).",
     "emailSentTitle": "Email sent",
     "emailSentBody": "A new verification message was sent. Check your inbox.",
     "resendTryAgain": "Failed to resend. Try again."
