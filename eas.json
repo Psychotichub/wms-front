@@ -25,7 +25,9 @@
       },
       "channel": "apk",
       "env": {
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EXPO_PUBLIC_API_URL": "https://ewms-k9l2.onrender.com",
+        "EXPO_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY": "BI4c_Sesp2Hfjs5UpW9pnqdvoorP8yTM-drAgwiWD526_yYi7wFwrzT5U-y7AMmmCHddZlwa90_tsZxl78e5Mpg"
       }
     },
     "production": {
@@ -35,7 +37,9 @@
       },
       "channel": "production",
       "env": {
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EXPO_PUBLIC_API_URL": "https://ewms-k9l2.onrender.com",
+        "EXPO_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY": "BI4c_Sesp2Hfjs5UpW9pnqdvoorP8yTM-drAgwiWD526_yYi7wFwrzT5U-y7AMmmCHddZlwa90_tsZxl78e5Mpg"
       }
     }
   },
