@@ -38,6 +38,7 @@ const EmailVerificationScreen = () => {
   const [error, setError] = useState(null);
   const [email, setEmail] = useState(route.params?.email || '');
   const [hasAutoVerified, setHasAutoVerified] = useState(false);
+  const [codeSentSuccess, setCodeSentSuccess] = useState(false);
 
   // Apply email from navigation params when they arrive (e.g. Login → verification)
   useEffect(() => {
@@ -180,15 +181,15 @@ const EmailVerificationScreen = () => {
         throw new Error(msg);
       }
 
-      const title = tr('verification.emailSentTitle');
-      const body = tr('verification.emailSentBody');
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.alert) {
-        window.alert(`${title}\n\n${body}`);
-      } else {
-        Alert.alert(title, body, [{ text: tr('common.ok') }]);
-      }
+      console.log('[EmailVerification] ✅ Verification code sent to:', normalizedEmail);
+      setCodeSentSuccess(true);
+      setError(null);
+      // Auto-hide the banner after 5 seconds
+      setTimeout(() => setCodeSentSuccess(false), 5000);
     } catch (err) {
       const message = err.message || tr('verification.resendTryAgain');
+      console.error('[EmailVerification] ❌ Failed to send code:', message);
+      setCodeSentSuccess(false);
       setError(message);
       if (Platform.OS === 'web' && typeof window !== 'undefined' && window.alert) {
         window.alert(`${tr('common.error')}\n\n${message}`);
@@ -244,6 +245,18 @@ const EmailVerificationScreen = () => {
               <Ionicons name="alert-circle-outline" size={20} color={t.colors.danger} />
               <Text style={[styles.errorText, { color: t.colors.danger }]}>
                 {error}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Code Sent Success Banner */}
+        {codeSentSuccess && (
+          <View style={[styles.errorCard, { backgroundColor: t.colors.success + '20', borderColor: t.colors.success }]}>
+            <View style={styles.errorRow}>
+              <Ionicons name="checkmark-circle-outline" size={20} color={t.colors.success} />
+              <Text style={[styles.errorText, { color: t.colors.success }]}>
+                ✅ Verification code sent! Check your inbox (and spam folder).
               </Text>
             </View>
           </View>
