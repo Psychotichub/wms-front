@@ -6,6 +6,7 @@ import { getStorageKeysForApi, migrateSecureStoreKeyFromAsyncStorage, secureStor
 import { logError } from '../utils/telemetry';
 import { buildUrl, resolveApiUrl } from '../utils/apiUrl';
 import NetInfo from '@react-native-community/netinfo';
+import { isOnlineFromNetInfoState, isWebNavigatorOnline } from '../utils/netConnectivity';
 import { drainOfflineQueue } from '../utils/offlineMutationQueue';
 import { resolveT } from '../i18n/resolveT';
 
@@ -273,8 +274,41 @@ export const AuthProvider = ({ children }) => {
   }, [request]);
 
   useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof navigator !== 'undefined') {
+      const sync = () => {
+        const online = isWebNavigatorOnline();
+        const prev = isOnlineRef.current;
+        isOnlineRef.current = online;
+        if (online && !prev && requestRef.current) {
+          void (async () => {
+            const { ok, fail } = await drainOfflineQueue((path, opts) => requestRef.current(path, opts));
+            if (ok + fail === 0) return;
+            if (fail === 0) {
+              Alert.alert(
+                resolveT('offlineQueue.syncTitle'),
+                resolveT('offlineQueue.syncDoneDetail', { count: String(ok) })
+              );
+            } else {
+              Alert.alert(
+                resolveT('offlineQueue.syncTitle'),
+                resolveT('offlineQueue.syncPartial', { ok: String(ok), fail: String(fail) })
+              );
+            }
+          })();
+        }
+      };
+      sync();
+      isOnlineRef.current = isWebNavigatorOnline();
+      window.addEventListener('online', sync);
+      window.addEventListener('offline', sync);
+      return () => {
+        window.removeEventListener('online', sync);
+        window.removeEventListener('offline', sync);
+      };
+    }
+
     const sub = NetInfo.addEventListener((state) => {
-      const online = state.isConnected !== false && state.isInternetReachable !== false;
+      const online = isOnlineFromNetInfoState(state);
       const prev = isOnlineRef.current;
       isOnlineRef.current = online;
       if (online && !prev && requestRef.current) {
@@ -296,7 +330,7 @@ export const AuthProvider = ({ children }) => {
       }
     });
     NetInfo.fetch().then((s) => {
-      isOnlineRef.current = s.isConnected !== false && s.isInternetReachable !== false;
+      isOnlineRef.current = isOnlineFromNetInfoState(s);
     });
     return () => sub();
   }, []);

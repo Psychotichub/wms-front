@@ -15,7 +15,7 @@ export default function GlobalAppBackground({ children }) {
   return (
     <View style={styles.root}>
       <ElectricBackdrop isDark={isDark} />
-      <View style={styles.foreground} pointerEvents="box-none">
+      <View style={[styles.foreground, { pointerEvents: 'box-none' }]}>
         {children}
       </View>
     </View>

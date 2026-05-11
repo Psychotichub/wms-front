@@ -3,6 +3,9 @@ import { buildUrl } from '../utils/apiUrl';
 
 export const REQUEST_TIMEOUT_MS = 15000;
 
+/** Login/signup/refresh hit cold Render hosts; 15s often aborts before the server wakes. */
+export const AUTH_ENDPOINT_TIMEOUT_MS = 120000;
+
 const isAuthEndpoint = (path) =>
   typeof path === 'string' &&
   (path.startsWith('/api/auth/login') ||
@@ -22,6 +25,13 @@ export const createApiClient = ({
   isDev
 }) => {
   const request = async (path, options = {}, retryCount = 0) => {
+    const {
+      __timeoutMs,
+      __didRefresh,
+      __suppress401Log,
+      ...fetchOptions
+    } = options;
+
     // Block until auth hydration is complete to avoid using stale token and
     // to prevent components from making requests before auth state is known.
     if (waitForAuthReady) {
@@ -35,7 +45,7 @@ export const createApiClient = ({
 
     const headers = {
       'Content-Type': 'application/json',
-      ...(options.headers || {})
+      ...(fetchOptions.headers || {})
     };
 
     const currentToken = getToken ? getToken() : null;
@@ -43,15 +53,22 @@ export const createApiClient = ({
       headers.Authorization = `Bearer ${currentToken}`;
     }
 
+    const timeoutMs =
+      typeof __timeoutMs === 'number' && __timeoutMs > 0
+        ? __timeoutMs
+        : isAuthEndpoint(path)
+          ? AUTH_ENDPOINT_TIMEOUT_MS
+          : REQUEST_TIMEOUT_MS;
+
     // Create AbortController for timeout handling
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const requestUrl = buildUrl(apiUrl, path);
       
       // Prepare request body - stringify if it's an object and Content-Type is JSON
-      let requestBody = options.body;
+      let requestBody = fetchOptions.body;
       if (requestBody && typeof requestBody === 'object' && !(requestBody instanceof FormData) && !(requestBody instanceof Blob)) {
         // Only stringify if Content-Type is JSON (default)
         if (headers['Content-Type']?.includes('application/json')) {
@@ -169,7 +186,7 @@ export const createApiClient = ({
             const hadToken = Boolean(getToken && getToken());
             // Only suppress console errors for 401s on protected routes when not authenticated
             const shouldSuppress401Log =
-              options.__suppress401Log ||
+              __suppress401Log ||
               (typeof path === 'string' && path.startsWith('/api/notifications'));
             if (!isAuthPath && !hadToken && isDev) {
               // Suppress expected 401 errors when not logged in
@@ -255,7 +272,7 @@ export const createApiClient = ({
         const canRefresh = Boolean(getRefreshToken && getRefreshToken());
 
         // Try refresh once for protected endpoints when we had an access token and a refresh token
-        if (!isAuthPath && hadToken && canRefresh && !options.__didRefresh) {
+        if (!isAuthPath && hadToken && canRefresh && !__didRefresh) {
           try {
             if (refreshAccessToken) {
               await refreshAccessToken();

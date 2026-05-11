@@ -2,7 +2,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View, Pressable, FlatList, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import NetInfo from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import { useAuth } from '../context/AuthContext';
@@ -17,6 +16,7 @@ import SkeletonBar from '../components/ui/SkeletonBar';
 import { generatePDF, generateExcel, generateHTMLTable } from '../utils/exportUtils';
 import { DAILY_REPORTS_PAGE_SIZE } from '../config/apiLimits';
 import { fetchAllDailyReportsForDate } from '../utils/dailyReportsFetch';
+import { isOfflineForMutationQueue } from '../utils/netConnectivity';
 
 const REPORT_ROW_HEIGHT = 44;
 
@@ -323,8 +323,7 @@ const DailyReportScreen = () => {
       if (editingId) {
         await request(`/api/reports/daily/${editingId}`, { method: 'PUT', body: JSON.stringify(payload) });
       } else {
-        const net = await NetInfo.fetch();
-        const offline = net.isConnected === false || net.isInternetReachable === false;
+        const offline = await isOfflineForMutationQueue();
         const idem = generateIdempotencyKey();
         const postHeaders = { 'Idempotency-Key': idem };
         if (offline) {

@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 export default function ElectricBackdrop({ isDark }) {
   if (!isDark) {
     return (
-      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
         <LinearGradient
           colors={['#e8f4fc', '#dbeafe', '#f1f5f9', '#e0f2fe']}
           locations={[0, 0.32, 0.68, 1]}
@@ -22,7 +22,7 @@ export default function ElectricBackdrop({ isDark }) {
   }
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
       <LinearGradient
         colors={['#010409', '#050a14', '#0a1628', '#020617']}
         locations={[0, 0.28, 0.62, 1]}

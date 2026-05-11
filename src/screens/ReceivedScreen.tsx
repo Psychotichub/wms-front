@@ -2,7 +2,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View, Pressable, FlatList, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import NetInfo from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import { useAuth } from '../context/AuthContext';
@@ -15,6 +14,7 @@ import AutocompleteInput from '../components/ui/AutocompleteInput';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
 import { generatePDF, generateExcel, generateHTMLTable } from '../utils/exportUtils';
+import { isOfflineForMutationQueue } from '../utils/netConnectivity';
 
 const RECEIPT_ROW_HEIGHT = 44;
 
@@ -164,8 +164,7 @@ const ReceivedScreen = () => {
       if (editingId) {
         await request(`/api/received/${editingId}`, { method: 'PUT', body: JSON.stringify(payload) });
       } else {
-        const net = await NetInfo.fetch();
-        const offline = net.isConnected === false || net.isInternetReachable === false;
+        const offline = await isOfflineForMutationQueue();
         const idem = generateIdempotencyKey();
         const postHeaders = { 'Idempotency-Key': idem };
         if (offline) {

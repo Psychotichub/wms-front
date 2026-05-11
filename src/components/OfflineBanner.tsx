@@ -4,9 +4,7 @@ import { View, Text, StyleSheet, Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { useThemeTokens } from '../theme/ThemeProvider';
 import { useI18n } from '../i18n/I18nProvider';
-
-const isOfflineState = (state) =>
-  state.isConnected === false || state.isInternetReachable === false;
+import { isOnlineFromNetInfoState, isWebNavigatorOnline } from '../utils/netConnectivity';
 
 export default function OfflineBanner() {
   const t = useThemeTokens();
@@ -14,10 +12,21 @@ export default function OfflineBanner() {
   const [offline, setOffline] = useState(false);
 
   useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof navigator !== 'undefined') {
+      const sync = () => setOffline(!isWebNavigatorOnline());
+      sync();
+      window.addEventListener('online', sync);
+      window.addEventListener('offline', sync);
+      return () => {
+        window.removeEventListener('online', sync);
+        window.removeEventListener('offline', sync);
+      };
+    }
+
     const unsub = NetInfo.addEventListener((state) => {
-      setOffline(isOfflineState(state));
+      setOffline(!isOnlineFromNetInfoState(state));
     });
-    NetInfo.fetch().then((state) => setOffline(isOfflineState(state)));
+    NetInfo.fetch().then((state) => setOffline(!isOnlineFromNetInfoState(state)));
     return () => unsub();
   }, []);
 

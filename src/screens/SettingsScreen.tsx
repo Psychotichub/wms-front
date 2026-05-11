@@ -565,7 +565,7 @@ const SettingsScreen = () => {
               accessibilityRole="button"
               accessibilityLabel={tr('settings.cancel')}
             />
-            <View style={styles.modalCardWrap} pointerEvents="box-none">
+            <View style={[styles.modalCardWrap, { pointerEvents: 'box-none' }]}>
               <View style={[styles.modalCard, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}>
                 <Text style={[styles.modalTitle, { color: t.colors.text }]}>{tr('settings.deleteConfirmTitle')}</Text>
                 <Text style={[styles.modalBody, { color: t.colors.textSecondary }]}>{tr('settings.deleteConfirmMessage')}</Text>

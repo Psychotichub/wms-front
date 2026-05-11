@@ -133,7 +133,7 @@ const TodoItem = React.memo(({ item, colors, onToggle, onEdit, onDelete }) => {
             ) : null}
           </View>
         </View>
-        <View style={styles.todoActions} pointerEvents="box-none">
+        <View style={[styles.todoActions, { pointerEvents: 'box-none' }]}>
           {hasReminder && (
             <Ionicons
               name={reminderPassed ? "alarm" : "alarm-outline"}
