@@ -6,6 +6,7 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { validateRequiredConfig } from './src/config/runtime';
 import { resolveT } from './src/i18n/resolveT';
 import { initSentry, captureException } from './src/config/sentry';
+import { useBackendPing } from './src/hooks/useBackendPing';
 
 initSentry();
 
@@ -50,6 +51,9 @@ try {
 }
 
 export default function App() {
+  // Silently wake the backend on startup to avoid cold-start delays at login/signup
+  useBackendPing();
+
   if (envError) {
     return (
       <View style={styles.errorContainer}>
