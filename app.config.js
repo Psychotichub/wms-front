@@ -7,11 +7,36 @@ const apiUrl = process.env.EXPO_PUBLIC_API_URL ||
   null;
 
 const projectRoot = __dirname;
-const googleServicesJson = path.join(projectRoot, 'google-services.json');
-const googleServiceInfoPlist = path.join(projectRoot, 'GoogleService-Info.plist');
-/** React Native Firebase's config plugin adds the Google Services Gradle plugin (classpath + apply) at prebuild — same as Firebase Android setup docs, but automated. It requires BOTH files because the plugin configures iOS too. */
-const hasFirebaseNativeConfig =
-  fs.existsSync(googleServicesJson) && fs.existsSync(googleServiceInfoPlist);
+
+/**
+ * Firebase native files for @react-native-firebase/app (prebuild / Gradle + iOS plist).
+ *
+ * EAS Build: upload as File-type env vars (secret or sensitive) so gitignored files exist on the worker:
+ *   - GOOGLE_SERVICES_JSON → your google-services.json
+ *   - GOOGLE_SERVICES_PLIST → your GoogleService-Info.plist
+ * Create in Expo dashboard (Environment variables) or: eas env:create --name GOOGLE_SERVICES_JSON --type file ...
+ * Assign each variable to the same EAS environment(s) you build with (development / preview / production).
+ *
+ * Local: place ./google-services.json and ./GoogleService-Info.plist in this folder.
+ */
+function resolveFirebaseServicesPath(envAbsolutePath, localRelative) {
+  if (envAbsolutePath) {
+    return envAbsolutePath;
+  }
+  const localAbs = path.join(projectRoot, localRelative.replace(/^\.\//, ''));
+  return fs.existsSync(localAbs) ? localRelative : undefined;
+}
+
+const androidGoogleServicesFile = resolveFirebaseServicesPath(
+  process.env.GOOGLE_SERVICES_JSON,
+  './google-services.json'
+);
+const iosGoogleServicesFile = resolveFirebaseServicesPath(
+  process.env.GOOGLE_SERVICES_PLIST,
+  './GoogleService-Info.plist'
+);
+
+const hasFirebaseNativeConfig = !!(androidGoogleServicesFile && iosGoogleServicesFile);
 
 const adminSignupCode = process.env.EXPO_PUBLIC_ADMIN_SIGNUP_CODE || null;
 const webPushVapidPublicKey = process.env.EXPO_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY || null;
@@ -60,13 +85,13 @@ module.exports = {
     ios: {
       bundleIdentifier: 'com.psychotic.wms',
       ...(hasFirebaseNativeConfig
-        ? { googleServicesFile: './GoogleService-Info.plist' }
+        ? { googleServicesFile: iosGoogleServicesFile }
         : {})
     },
     android: {
       package: 'com.psychotic.wms',
       ...(hasFirebaseNativeConfig
-        ? { googleServicesFile: './google-services.json' }
+        ? { googleServicesFile: androidGoogleServicesFile }
         : {})
     }
   }
