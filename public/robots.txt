@@ -1,0 +1,16 @@
+# robots.txt
+
+User-agent: *
+
+# Block sensitive or unnecessary areas
+Disallow: /admin/
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /private/
+Disallow: /tmp/
+
+# Allow public content
+Allow: /
+
+# Sitemap location
+Sitemap: https://psychotic.expo.app/sitemap.xml
