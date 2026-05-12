@@ -192,6 +192,10 @@ $RECYCLE.BIN/
 *.sqlite3
 *.db-journal
 
+# Firebase native (download from Firebase Console → Project settings → Your apps)
+google-services.json
+GoogleService-Info.plist
+
 # Secrets and keys
 *.pem
 *.key

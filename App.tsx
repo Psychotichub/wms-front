@@ -6,9 +6,11 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { validateRequiredConfig } from './src/config/runtime';
 import { resolveT } from './src/i18n/resolveT';
 import { initSentry, captureException } from './src/config/sentry';
+import { initFirebaseNative } from './src/config/firebaseNative';
 import { useBackendPing } from './src/hooks/useBackendPing';
 
 initSentry();
+initFirebaseNative();
 
 type ErrorBoundaryState = { hasError: boolean; error: Error | null };
 
