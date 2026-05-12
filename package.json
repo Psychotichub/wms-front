@@ -12,7 +12,8 @@
     "deploy:expo": "npm run export:web && eas deploy",
     "build:dev": "expo run:android --variant=release",
     "build:dev:ios": "expo run:ios --configuration=Release",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "eas:env:firebase": "node scripts/push-firebase-eas-env.cjs"
   },
   "dependencies": {
     "@babel/plugin-proposal-nullish-coalescing-operator": "^7.18.6",

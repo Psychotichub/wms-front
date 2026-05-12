@@ -11,11 +11,12 @@ const projectRoot = __dirname;
 /**
  * Firebase native files for @react-native-firebase/app (prebuild / Gradle + iOS plist).
  *
- * EAS Build: upload as File-type env vars (secret or sensitive) so gitignored files exist on the worker:
- *   - GOOGLE_SERVICES_JSON → your google-services.json
- *   - GOOGLE_SERVICES_PLIST → your GoogleService-Info.plist
- * Create in Expo dashboard (Environment variables) or: eas env:create --name GOOGLE_SERVICES_JSON --type file ...
- * Assign each variable to the same EAS environment(s) you build with (development / preview / production).
+ * EAS Build: upload as File-type env vars so gitignored files exist on the worker:
+ *   - GOOGLE_SERVICES_JSON → google-services.json
+ *   - GOOGLE_SERVICES_PLIST → GoogleService-Info.plist
+ * Push from CLI: npm run eas:env:firebase (see scripts/push-firebase-eas-env.cjs)
+ * Use visibility "sensitive" for file vars so EAS CLI can resolve paths locally and
+ * avoid "not checked in to your repository" warnings; "secret" hides values from CLI.
  *
  * Local: place ./google-services.json and ./GoogleService-Info.plist in this folder.
  */
