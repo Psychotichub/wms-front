@@ -13,7 +13,8 @@
     "build:dev": "expo run:android --variant=release",
     "build:dev:ios": "expo run:ios --configuration=Release",
     "lint": "eslint .",
-    "eas:env:firebase": "node scripts/push-firebase-eas-env.cjs"
+    "eas:env:firebase": "node scripts/push-firebase-eas-env.cjs",
+    "eas:secret:firebase": "npx --yes eas-cli secret:create --scope project --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json --force --non-interactive && npx --yes eas-cli secret:create --scope project --name GOOGLE_SERVICES_PLIST --type file --value ./GoogleService-Info.plist --force --non-interactive"
   },
   "dependencies": {
     "@babel/plugin-proposal-nullish-coalescing-operator": "^7.18.6",
