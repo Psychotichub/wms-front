@@ -8,7 +8,7 @@ import React, {
   useLayoutEffect,
   useCallback
 } from 'react';
-import { ActivityIndicator, Appearance, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Appearance, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts, PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans';
 import { lightTheme } from './light';
@@ -66,18 +66,41 @@ const fontSource = {
   PlusJakartaSans_700Bold
 };
 
-function mergeTypography(fontsLoaded) {
-  if (!fontsLoaded) return baseTypography;
+function mergeTypography(fontsLoaded, width) {
+  const isSmall = width < 480;
+  const isMedium = width >= 480 && width < 768;
+  const scale = isSmall ? 0.85 : isMedium ? 0.93 : 1.0;
+
+  const scaleFont = (style) => {
+    const scaled = {
+      ...style,
+      fontSize: Math.max(9, Math.round(style.fontSize * scale))
+    };
+    if (style.lineHeight) {
+      scaled.lineHeight = Math.max(12, Math.round(style.lineHeight * scale));
+    }
+    return scaled;
+  };
+
+  const base = {
+    h1: { ...baseTypography.h1, fontFamily: fontsLoaded ? fontFamilies.bold : undefined },
+    h2: { ...baseTypography.h2, fontFamily: fontsLoaded ? fontFamilies.bold : undefined },
+    h3: { ...baseTypography.h3, fontFamily: fontsLoaded ? fontFamilies.semibold : undefined },
+    body: { ...baseTypography.body, fontFamily: fontsLoaded ? fontFamilies.medium : undefined },
+    small: { ...baseTypography.small, fontFamily: fontsLoaded ? fontFamilies.regular : undefined }
+  };
+
   return {
-    h1: { ...baseTypography.h1, fontFamily: fontFamilies.bold },
-    h2: { ...baseTypography.h2, fontFamily: fontFamilies.bold },
-    h3: { ...baseTypography.h3, fontFamily: fontFamilies.semibold },
-    body: { ...baseTypography.body, fontFamily: fontFamilies.medium },
-    small: { ...baseTypography.small, fontFamily: fontFamilies.regular }
+    h1: scaleFont(base.h1),
+    h2: scaleFont(base.h2),
+    h3: scaleFont(base.h3),
+    body: scaleFont(base.body),
+    small: scaleFont(base.small)
   };
 }
 
 export const ThemeProvider = ({ children }) => {
+  const { width: windowWidth } = useWindowDimensions();
   const [fontsLoaded, fontError] = useFonts(fontSource);
   const boot = useMemo(() => preferencesBootstrap(), []);
   const [themePreference, setThemePreferenceState] = useState(boot.themePreference);
@@ -147,15 +170,20 @@ export const ThemeProvider = ({ children }) => {
     }
   }, []);
 
+  const resolvedDensity = useMemo(() => {
+    if (windowWidth < 480) return 'compact';
+    return spacingDensity;
+  }, [windowWidth, spacingDensity]);
+
   const palette = useMemo(() => {
     const base = resolvedMode === 'dark' ? darkTheme : lightTheme;
-    const typo = mergeTypography(Boolean(fontsLoaded) && !fontError);
+    const typo = mergeTypography(Boolean(fontsLoaded) && !fontError, windowWidth);
     return {
       ...base,
       typography: typo,
-      spacing: scaleThemeSpacing(base.spacing, spacingDensity)
+      spacing: scaleThemeSpacing(base.spacing, resolvedDensity)
     };
-  }, [resolvedMode, fontsLoaded, fontError, spacingDensity]);
+  }, [resolvedMode, fontsLoaded, fontError, resolvedDensity, windowWidth]);
 
   const value = useMemo(
     () => ({

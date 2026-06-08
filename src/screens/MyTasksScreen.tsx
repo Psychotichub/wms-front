@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, View, Pressable, FlatList, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, Pressable, FlatList, ScrollView, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
@@ -72,7 +72,7 @@ const getPriorityColor = (priority, colors) => {
   }
 };
 
-const TaskRow = React.memo(({ item, colors, onStatusUpdate, onViewDetails, currentEmployeeId, tr, localeTag }) => {
+const TaskRow = React.memo(({ item, colors, onStatusUpdate, onViewDetails, currentEmployeeId, tr, localeTag, isKanban, columnWidth }) => {
   if (item.__skeleton) {
     return (
       <View style={[styles.taskCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
@@ -96,104 +96,118 @@ const TaskRow = React.memo(({ item, colors, onStatusUpdate, onViewDetails, curre
     }
   };
 
+  // Responsive styling variables
+  const isCompact = isKanban && columnWidth < 260;
+  const cardPadding = isKanban ? (columnWidth < 220 ? 8 : 10) : 16;
+  const titleSize = isKanban ? (columnWidth < 220 ? 12 : columnWidth < 260 ? 13 : 14) : 16;
+  const descSize = isKanban ? (columnWidth < 220 ? 11 : 12) : 14;
+  const metaGap = isKanban ? 8 : 16;
+  const metaIconSize = isKanban ? 12 : 14;
+  const showBtnText = !isCompact;
+  const btnPaddingVer = isKanban ? 6 : 8;
+  const btnPaddingHor = isKanban ? 8 : 12;
+  const btnFontSize = isKanban ? 11 : 14;
+
   return (
-    <View style={[styles.taskCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+    <View style={[styles.taskCard, { borderColor: colors.border, backgroundColor: colors.card, padding: cardPadding }]}>
       <View style={styles.taskHeader}>
         <View style={styles.taskTitleRow}>
           <Animated.Text
             sharedTransitionTag={`task-title-${item._id}`}
-            style={[styles.taskTitle, { color: colors.text }]}
+            style={[styles.taskTitle, { color: colors.text, fontSize: titleSize }]}
             numberOfLines={1}
           >
             {item.title}
           </Animated.Text>
-          <View style={[styles.priorityBadge, { backgroundColor: getRGBA(priorityColor, 0.15), borderColor: priorityColor }]}>
-            <Text style={[styles.priorityText, { color: priorityColor }]}>
+          <View style={[styles.priorityBadge, { backgroundColor: getRGBA(priorityColor, 0.15), borderColor: priorityColor, paddingHorizontal: isKanban ? 4 : 8, paddingVertical: isKanban ? 2 : 4 }]}>
+            <Text style={[styles.priorityText, { color: priorityColor, fontSize: isKanban ? 8 : 10 }]}>
               {(TASK_PRIORITY_I18N[item.priority] ? tr(TASK_PRIORITY_I18N[item.priority]) : item.priority).toUpperCase()}
             </Text>
           </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: getRGBA(statusColor, 0.15), borderColor: statusColor }]}>
-          <Text style={[styles.statusText, { color: statusColor }]}>
-            {(TASK_STATUS_I18N[item.status] ? tr(TASK_STATUS_I18N[item.status]) : item.status.replace('_', ' ')).toUpperCase()}
-          </Text>
-        </View>
+        {!isKanban && (
+          <View style={[styles.statusBadge, { backgroundColor: getRGBA(statusColor, 0.15), borderColor: statusColor }]}>
+            <Text style={[styles.statusText, { color: statusColor }]}>
+              {(TASK_STATUS_I18N[item.status] ? tr(TASK_STATUS_I18N[item.status]) : item.status.replace('_', ' ')).toUpperCase()}
+            </Text>
+          </View>
+        )}
       </View>
 
       {item.description ? (
-        <Text style={[styles.taskDescription, { color: colors.textSecondary }]} numberOfLines={2}>
+        <Text style={[styles.taskDescription, { color: colors.textSecondary, fontSize: descSize }]} numberOfLines={2}>
           {item.description}
         </Text>
       ) : null}
 
-      <View style={styles.taskMeta}>
+      <View style={[styles.taskMeta, { gap: metaGap }]}>
         {item.dueDate && (
           <View style={styles.taskMetaItem}>
-            <Ionicons name="calendar-outline" size={14} color={isOverdue ? colors.danger : colors.textSecondary} />
-            <Text style={[styles.taskMetaText, { color: isOverdue ? colors.danger : colors.textSecondary }]}>
+            <Ionicons name="calendar-outline" size={metaIconSize} color={isOverdue ? colors.danger : colors.textSecondary} />
+            <Text style={[styles.taskMetaText, { color: isOverdue ? colors.danger : colors.textSecondary, fontSize: descSize - 2 }]}>
               {tr('myTasks.duePrefix')} {new Date(item.dueDate).toLocaleDateString(localeTag)}
             </Text>
-            {isOverdue && (
-              <Text style={[styles.overdueText, { color: colors.danger }]}> {tr('taskDetail.overdue').toUpperCase()}</Text>
+            {isOverdue && !isCompact && (
+              <Text style={[styles.overdueText, { color: colors.danger, fontSize: descSize - 2 }]}> {tr('taskDetail.overdue').toUpperCase()}</Text>
             )}
           </View>
         )}
         {item.estimatedHours && (
           <View style={styles.taskMetaItem}>
-            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-            <Text style={[styles.taskMetaText, { color: colors.textSecondary }]}>
+            <Ionicons name="time-outline" size={metaIconSize} color={colors.textSecondary} />
+            <Text style={[styles.taskMetaText, { color: colors.textSecondary, fontSize: descSize - 2 }]}>
               {tr('myTasks.estPrefix')} {item.estimatedHours}h
             </Text>
           </View>
         )}
-        {item.category && (
+        {item.category && !isCompact && (
           <View style={styles.taskMetaItem}>
-            <Ionicons name="pricetag-outline" size={14} color={colors.textSecondary} />
-            <Text style={[styles.taskMetaText, { color: colors.textSecondary }]}>
+            <Ionicons name="pricetag-outline" size={metaIconSize} color={colors.textSecondary} />
+            <Text style={[styles.taskMetaText, { color: colors.textSecondary, fontSize: descSize - 2 }]}>
               {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
             </Text>
           </View>
         )}
       </View>
 
-      {item.notes && (
+      {item.notes && !isCompact && (
         <View style={[styles.notesBox, { backgroundColor: getRGBA(colors.primary, 0.05) }]}>
           <Text style={[styles.notesLabel, { color: colors.textSecondary }]}>{tr('myTasks.notesLabel')}</Text>
           <Text style={[styles.notesText, { color: colors.text }]}>{item.notes}</Text>
         </View>
       )}
 
-      <View style={styles.taskActions}>
+      <View style={[styles.taskActions, { flexDirection: 'row', gap: 6, flexWrap: 'wrap' }]}>
         <Pressable
-          style={[styles.viewDetailsBtn, { backgroundColor: getRGBA(colors.primary, 0.1), borderColor: colors.primary }]}
+          style={[styles.viewDetailsBtn, { backgroundColor: getRGBA(colors.primary, 0.1), borderColor: colors.primary, paddingVertical: btnPaddingVer, paddingHorizontal: btnPaddingHor, marginBottom: 0 }]}
           onPress={() => onViewDetails(item._id)}
         >
-          <Ionicons name="eye-outline" size={16} color={colors.primary} />
-          <Text style={[styles.viewDetailsText, { color: colors.primary }]}>{tr('tasks.viewDetails')}</Text>
+          <Ionicons name="eye-outline" size={isKanban ? 13 : 16} color={colors.primary} />
+          {showBtnText && <Text style={[styles.viewDetailsText, { color: colors.primary, fontSize: btnFontSize }]}>{tr('tasks.viewDetails')}</Text>}
         </Pressable>
         
         {item.status !== 'completed' && item.status !== 'cancelled' && (
-          <View style={styles.statusActions}>
+          <View style={[styles.statusActions, { flexDirection: 'row', gap: 6 }]}>
             {/* Only show "Start" button if current user is the assigned employee */}
             {item.status === 'pending' && 
              currentEmployeeId && 
              item.assignedTo?._id && 
              currentEmployeeId.toString() === item.assignedTo._id.toString() && (
               <Pressable
-                style={[styles.statusBtn, { backgroundColor: getRGBA(colors.primary, 0.15), borderColor: colors.primary }]}
+                style={[styles.statusBtn, { backgroundColor: getRGBA(colors.primary, 0.15), borderColor: colors.primary, paddingVertical: btnPaddingVer, paddingHorizontal: btnPaddingHor }]}
                 onPress={() => handleStatusChange('in_progress')}
               >
-                <Ionicons name="play-outline" size={16} color={colors.primary} />
-                <Text style={[styles.statusBtnText, { color: colors.primary }]}>{tr('myTasks.start')}</Text>
+                <Ionicons name="play-outline" size={isKanban ? 13 : 16} color={colors.primary} />
+                {showBtnText && <Text style={[styles.statusBtnText, { color: colors.primary, fontSize: btnFontSize }]}>{tr('myTasks.start')}</Text>}
               </Pressable>
             )}
             {item.status === 'in_progress' && (
               <Pressable
-                style={[styles.statusBtn, { backgroundColor: getRGBA(colors.success, 0.15), borderColor: colors.success }]}
+                style={[styles.statusBtn, { backgroundColor: getRGBA(colors.success, 0.15), borderColor: colors.success, paddingVertical: btnPaddingVer, paddingHorizontal: btnPaddingHor }]}
                 onPress={() => handleStatusChange('completed')}
               >
-                <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} />
-                <Text style={[styles.statusBtnText, { color: colors.success }]}>{tr('myTasks.complete')}</Text>
+                <Ionicons name="checkmark-circle-outline" size={isKanban ? 13 : 16} color={colors.success} />
+                {showBtnText && <Text style={[styles.statusBtnText, { color: colors.success, fontSize: btnFontSize }]}>{tr('myTasks.complete')}</Text>}
               </Pressable>
             )}
           </View>
@@ -225,6 +239,7 @@ const MyTasksScreen = () => {
   const { request, user } = useAuth();
   const t = useThemeTokens();
   const { t: tr, locale } = useI18n();
+  const { width: windowWidth } = useWindowDimensions();
   const localeTag = locale === 'es' ? 'es-ES' : 'en-US';
   const navigation = useNavigation();
 
@@ -331,9 +346,11 @@ const MyTasksScreen = () => {
         currentEmployeeId={currentEmployeeId}
         tr={tr}
         localeTag={localeTag}
+        isKanban={false}
+        columnWidth={windowWidth}
       />
     </AnimatedListItem>
-  ), [t.colors, handleStatusUpdate, handleViewDetails, currentEmployeeId, tr, localeTag]);
+  ), [t.colors, handleStatusUpdate, handleViewDetails, currentEmployeeId, tr, localeTag, windowWidth]);
 
   const getItemLayout = useCallback((_, index) => ({
     length: TASK_ROW_HEIGHT,
@@ -342,7 +359,7 @@ const MyTasksScreen = () => {
   }), []);
 
   return (
-    <Screen>
+    <Screen noScroll={viewMode === 'kanban'}>
       <View style={[styles.container, { backgroundColor: 'transparent', flex: 1 }]}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: t.colors.text }]}>{tr('myTasks.screenTitle')}</Text>
@@ -472,7 +489,7 @@ const MyTasksScreen = () => {
               columns={kanbanColumns}
               items={tasks}
               getColId={item => item.status}
-              renderItem={item => (
+              renderItem={(item, layoutInfo) => (
                 <TaskRow
                   item={item}
                   colors={t.colors}
@@ -481,6 +498,8 @@ const MyTasksScreen = () => {
                   currentEmployeeId={currentEmployeeId}
                   tr={tr}
                   localeTag={localeTag}
+                  isKanban={layoutInfo?.isKanban}
+                  columnWidth={layoutInfo?.columnWidth}
                 />
               )}
               onItemDrop={handleStatusUpdate}

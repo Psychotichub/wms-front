@@ -8,15 +8,15 @@ import {
   useWindowDimensions,
   ActivityIndicator
 } from 'react-native';
-import { PanGestureHandler } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedGestureHandler,
   withSpring,
   runOnJS
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 // Helper to convert hex to RGBA for web compatibility
 const getRGBA = (hex, alpha) => {
@@ -35,6 +35,7 @@ const DraggableCard = ({
   item,
   colIndex,
   columnWidth,
+  actualColumnWidth,
   renderItem,
   onDragStart,
   onDragEnd,
@@ -44,18 +45,23 @@ const DraggableCard = ({
   const translateY = useSharedValue(0);
   const isDragging = useSharedValue(false);
 
-  const gestureHandler = useAnimatedGestureHandler({
-    onStart: (_, ctx) => {
-      ctx.startX = translateX.value;
-      ctx.startY = translateY.value;
+  const startX = useSharedValue(0);
+  const startY = useSharedValue(0);
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-15, 15])
+    .activeOffsetY([-15, 15])
+    .onStart(() => {
+      startX.value = translateX.value;
+      startY.value = translateY.value;
       isDragging.value = true;
       runOnJS(onDragStart)(item._id);
-    },
-    onActive: (event, ctx) => {
-      translateX.value = ctx.startX + event.translationX;
-      translateY.value = ctx.startY + event.translationY;
-    },
-    onEnd: (event) => {
+    })
+    .onUpdate((event) => {
+      translateX.value = startX.value + event.translationX;
+      translateY.value = startY.value + event.translationY;
+    })
+    .onEnd((event) => {
       isDragging.value = false;
       
       // Calculate target column based on start offset and visual displacement
@@ -66,8 +72,7 @@ const DraggableCard = ({
 
       translateX.value = withSpring(0);
       translateY.value = withSpring(0);
-    }
-  });
+    });
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -87,21 +92,16 @@ const DraggableCard = ({
   });
 
   return (
-    <PanGestureHandler
-      onGestureEvent={gestureHandler}
-      onHandlerStateChange={gestureHandler}
-      activeOffsetX={[-15, 15]}
-      activeOffsetY={[-15, 15]}
-    >
+    <GestureDetector gesture={panGesture}>
       <Animated.View style={[animatedStyle, styles.draggableContainer]}>
         <View style={[styles.dragIndicator, { backgroundColor: getRGBA(colors.textSecondary, 0.1) }]}>
           <Ionicons name="grid" size={12} color={colors.textSecondary} />
         </View>
         <View style={styles.cardContent}>
-          {renderItem(item)}
+          {renderItem(item, { isKanban: true, columnWidth: actualColumnWidth })}
         </View>
       </Animated.View>
-    </PanGestureHandler>
+    </GestureDetector>
   );
 };
 
@@ -120,7 +120,16 @@ export const KanbanBoard = ({
   const [draggingItemId, setDraggingItemId] = useState(null);
 
   const isDesktop = windowWidth >= 768;
-  const columnWidth = isDesktop ? (windowWidth - 48) / columns.length : windowWidth * 0.82;
+  const { wide, compact } = useBreakpoint();
+  
+  // Cap the board at a clean maximum width on desktop to keep columns appropriately sized and prevent right overflow
+  const maxBoardWidth = isDesktop ? 1000 : 1200;
+  const horizontalPad = compact ? 12 : wide ? 28 : 16;
+  const boardWidth = Math.min(windowWidth, maxBoardWidth) - (2 * horizontalPad);
+
+  const columnWidth = isDesktop
+    ? (boardWidth - (16 * (columns.length - 1))) / columns.length
+    : windowWidth * 0.82;
 
   const handleDragStart = useCallback((itemId) => {
     setDraggingItemId(itemId);
@@ -192,6 +201,7 @@ export const KanbanBoard = ({
                 item={item}
                 colIndex={colIndex}
                 columnWidth={columnWidth + 16}
+                actualColumnWidth={columnWidth}
                 renderItem={renderItem}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
@@ -226,13 +236,14 @@ export const KanbanBoard = ({
           {columns.map((col, index) => renderColumn(col, index))}
         </View>
       ) : (
-        <View>
+        <View style={styles.mobileWrapper}>
           <ScrollView
             horizontal
             pagingEnabled
             snapToInterval={columnWidth + 16}
             snapToAlignment="center"
             decelerationRate="fast"
+            style={styles.mobileScrollView}
             contentContainerStyle={styles.mobileContainer}
             showsHorizontalScrollIndicator={false}
             onScroll={handleScroll}
@@ -264,7 +275,9 @@ export const KanbanBoard = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginVertical: 10
+    marginVertical: 10,
+    maxHeight: 500,
+    width: '100%'
   },
   loaderContainer: {
     height: 300,
@@ -275,17 +288,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
     width: '100%',
-    minHeight: 500
+    maxWidth: 1000,
+    alignSelf: 'center',
+    flex: 1
+  },
+  mobileWrapper: {
+    flex: 1,
+    width: '100%'
+  },
+  mobileScrollView: {
+    flex: 1
   },
   mobileContainer: {
     paddingHorizontal: 16,
     gap: 16,
-    paddingBottom: 8
+    paddingBottom: 8,
+    flexGrow: 1
   },
   column: {
     borderRadius: 16,
     borderWidth: 1,
-    height: 520,
+    height: '100%',
     padding: 12,
     shadowColor: '#000',
     shadowOpacity: 0.02,

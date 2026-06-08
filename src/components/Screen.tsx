@@ -2,11 +2,9 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useThemeTokens } from '../theme/ThemeProvider';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 
-const Screen = ({ children }) => {
-  const t = useThemeTokens();
+const Screen = ({ children, noScroll = false }) => {
   const { wide, compact } = useBreakpoint();
   const maxWidth = wide ? 1200 : 960;
   const horizontalPad = compact ? 12 : wide ? 28 : 16;
@@ -17,12 +15,18 @@ const Screen = ({ children }) => {
         style={styles.safe}
         edges={['top', 'left', 'right']}
       >
-        <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingHorizontal: horizontalPad }]}
-          style={styles.scroll}
-        >
-          <View style={[styles.inner, { maxWidth }]}>{children}</View>
-        </ScrollView>
+        {noScroll ? (
+          <View style={[styles.nonScrollContent, { paddingHorizontal: horizontalPad }]}>
+            <View style={[styles.inner, { maxWidth, flex: 1 }]}>{children}</View>
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={[styles.scrollContent, { paddingHorizontal: horizontalPad }]}
+            style={styles.scroll}
+          >
+            <View style={[styles.inner, { maxWidth }]}>{children}</View>
+          </ScrollView>
+        )}
       </SafeAreaView>
     </View>
   );
@@ -33,7 +37,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: 'transparent' },
   scroll: { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { flexGrow: 1, paddingVertical: 16 },
-  inner: { width: '100%', alignSelf: 'center', backgroundColor: 'transparent' }
+  inner: { width: '100%', alignSelf: 'center', backgroundColor: 'transparent' },
+  nonScrollContent: { flex: 1, paddingVertical: 16, backgroundColor: 'transparent' }
 });
 
 export default Screen;

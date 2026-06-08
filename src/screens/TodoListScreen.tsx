@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Pressable, Alert, FlatList, Platform, ScrollView } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Pressable, Alert, FlatList, Platform, ScrollView, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
@@ -60,7 +60,7 @@ const TODO_PRIORITY_I18N = {
 const SKELETON_TODOS = Array.from({ length: 4 }).map((_, idx) => ({ id: `todo-skeleton-${idx}`, __skeleton: true }));
 
 
-const TodoItem = React.memo(({ item, colors, onToggle, onEdit, onDelete }) => {
+const TodoItem = React.memo(({ item, colors, onToggle, onEdit, onDelete, isKanban, columnWidth }) => {
   const { t: tr, locale } = useI18n();
   const localeTag = locale === 'es' ? 'es-ES' : 'en-US';
 
@@ -93,30 +93,42 @@ const TodoItem = React.memo(({ item, colors, onToggle, onEdit, onDelete }) => {
   const reminderPassed = hasReminder && new Date(item.reminder.date) < new Date();
   const isLocked = isCompletedMoreThanWeekAgo(item);
 
+  // Responsive styling variables
+  const isCompact = isKanban && columnWidth < 260;
+  const cardPadding = isKanban ? (columnWidth < 220 ? 8 : 10) : 16;
+  const titleSize = isKanban ? (columnWidth < 220 ? 12 : columnWidth < 260 ? 13 : 14) : 16;
+  const descSize = isKanban ? (columnWidth < 220 ? 11 : 12) : 14;
+  const metaIconSize = isKanban ? 12 : 14;
+  const showReminder = hasReminder && !isCompact;
+  const showTags = item.tags && item.tags.length > 0 && !isCompact;
+  const actionBtnSize = isKanban ? 24 : 32;
+  const actionBtnPadding = isKanban ? 4 : 6;
+  const actionIconSize = isKanban ? 12 : 16;
+
   return (
-    <View style={[styles.todoCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+    <View style={[styles.todoCard, { borderColor: colors.border, backgroundColor: colors.card, padding: cardPadding }]}>
       <View style={styles.todoHeader}>
         <View style={styles.todoTitleRow}>
           {item.completed ? (
             <Pressable
-              style={[styles.actionButton, { backgroundColor: getRGBA(colors.success, 0.12) }]}
+              style={[styles.actionButton, { backgroundColor: getRGBA(colors.success, 0.12), width: isKanban ? 24 : 32, height: isKanban ? 24 : 32, borderRadius: isKanban ? 12 : 16 }]}
               onPress={() => onToggle(item._id)}
             >
-              <Ionicons name="checkmark" size={20} color={colors.success} />
+              <Ionicons name="checkmark" size={isKanban ? 14 : 20} color={colors.success} />
             </Pressable>
           ) : (
             <Pressable
-              style={[styles.actionButton, { backgroundColor: getRGBA(colors.danger, 0.12) }]}
+              style={[styles.actionButton, { backgroundColor: getRGBA(colors.danger, 0.12), width: isKanban ? 24 : 32, height: isKanban ? 24 : 32, borderRadius: isKanban ? 12 : 16 }]}
               onPress={() => onToggle(item._id)}
             >
-              <Ionicons name="close" size={20} color={colors.danger} />
+              <Ionicons name="close" size={isKanban ? 14 : 20} color={colors.danger} />
             </Pressable>
           )}
           <View style={styles.todoContent}>
             <Text
               style={[
                 styles.todoTitle,
-                { color: colors.text },
+                { color: colors.text, fontSize: titleSize },
                 item.completed && { textDecorationLine: 'line-through', opacity: 0.6 }
               ]}
               numberOfLines={2}
@@ -127,7 +139,7 @@ const TodoItem = React.memo(({ item, colors, onToggle, onEdit, onDelete }) => {
               <Text
                 style={[
                   styles.todoDescription,
-                  { color: colors.textSecondary },
+                  { color: colors.textSecondary, fontSize: descSize },
                   item.completed && { opacity: 0.6 }
                 ]}
                 numberOfLines={2}
@@ -137,19 +149,18 @@ const TodoItem = React.memo(({ item, colors, onToggle, onEdit, onDelete }) => {
             ) : null}
           </View>
         </View>
-        <View style={[styles.todoActions, { pointerEvents: 'box-none' }]}>
-          {hasReminder && (
+        <View style={[styles.todoActions, { pointerEvents: 'box-none', gap: 4 }]}>
+          {hasReminder && isCompact && (
             <Ionicons
               name={reminderPassed ? "alarm" : "alarm-outline"}
-              size={18}
+              size={14}
               color={reminderPassed ? colors.warning : colors.textSecondary}
-              style={{ marginRight: 8 }}
             />
           )}
           <Pressable
             style={[
               styles.actionBtn,
-              { backgroundColor: getRGBA(colors.primary, 0.12) },
+              { backgroundColor: getRGBA(colors.primary, 0.12), padding: actionBtnPadding, width: actionBtnSize, height: actionBtnSize, borderRadius: actionBtnSize / 2 },
               isLocked && { opacity: 0.5 }
             ]}
             onPress={() => {
@@ -161,12 +172,12 @@ const TodoItem = React.memo(({ item, colors, onToggle, onEdit, onDelete }) => {
             }}
             disabled={isLocked}
           >
-            <Ionicons name="create-outline" size={16} color={colors.primary} />
+            <Ionicons name="create-outline" size={actionIconSize} color={colors.primary} />
           </Pressable>
           <Pressable
             style={({ pressed }) => [
               styles.actionBtn,
-              { backgroundColor: getRGBA(colors.danger, 0.12) },
+              { backgroundColor: getRGBA(colors.danger, 0.12), padding: actionBtnPadding, width: actionBtnSize, height: actionBtnSize, borderRadius: actionBtnSize / 2 },
               isLocked && { opacity: 0.5 },
               pressed && !isLocked && { opacity: 0.7 }
             ]}
@@ -191,41 +202,41 @@ const TodoItem = React.memo(({ item, colors, onToggle, onEdit, onDelete }) => {
             disabled={isLocked}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="trash-outline" size={16} color={colors.danger} />
+            <Ionicons name="trash-outline" size={actionIconSize} color={colors.danger} />
           </Pressable>
         </View>
       </View>
 
-      <View style={styles.todoMeta}>
+      <View style={[styles.todoMeta, { gap: isKanban ? 6 : 12, flexWrap: 'wrap' }]}>
         {isLocked && (
           <View style={[styles.lockedBadge, { backgroundColor: getRGBA(colors.textSecondary, 0.15) }]}>
-            <Ionicons name="lock-closed" size={12} color={colors.textSecondary} />
-            <Text style={[styles.lockedText, { color: colors.textSecondary }]}>{tr('todos.locked')}</Text>
+            <Ionicons name="lock-closed" size={10} color={colors.textSecondary} />
+            <Text style={[styles.lockedText, { color: colors.textSecondary, fontSize: descSize - 2 }]}>{tr('todos.locked')}</Text>
           </View>
         )}
-        <View style={[styles.priorityBadge, { backgroundColor: getRGBA(priorityColor, 0.15), borderColor: priorityColor }]}>
-          <Text style={[styles.priorityText, { color: priorityColor }]}>
+        <View style={[styles.priorityBadge, { backgroundColor: getRGBA(priorityColor, 0.15), borderColor: priorityColor, paddingHorizontal: isKanban ? 4 : 8, paddingVertical: isKanban ? 2 : 4 }]}>
+          <Text style={[styles.priorityText, { color: priorityColor, fontSize: isKanban ? 8 : 10 }]}>
             {(TODO_PRIORITY_I18N[item.priority] ? tr(TODO_PRIORITY_I18N[item.priority]) : item.priority).toUpperCase()}
           </Text>
         </View>
-        {item.category && (
-          <Text style={[styles.categoryText, { color: colors.textSecondary }]}>
+        {item.category && !isCompact && (
+          <Text style={[styles.categoryText, { color: colors.textSecondary, fontSize: descSize - 2 }]}>
             {item.category}
           </Text>
         )}
-        {hasReminder && (
+        {showReminder && (
           <View style={styles.reminderInfo}>
-            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-            <Text style={[styles.reminderText, { color: colors.textSecondary }]}>
+            <Ionicons name="time-outline" size={metaIconSize} color={colors.textSecondary} />
+            <Text style={[styles.reminderText, { color: colors.textSecondary, fontSize: descSize - 2 }]}>
               {formatDateTime(item.reminder.date)}
             </Text>
           </View>
         )}
-        {item.tags && item.tags.length > 0 && (
+        {showTags && (
           <View style={styles.tagsContainer}>
-            {item.tags.slice(0, 3).map((tag, idx) => (
-              <View key={idx} style={[styles.tag, { backgroundColor: getRGBA(colors.primary, 0.1) }]}>
-                <Text style={[styles.tagText, { color: colors.primary }]}>{tag}</Text>
+            {item.tags.slice(0, 2).map((tag, idx) => (
+              <View key={idx} style={[styles.tag, { backgroundColor: getRGBA(colors.primary, 0.1), paddingHorizontal: 6, paddingVertical: 2 }]}>
+                <Text style={[styles.tagText, { color: colors.primary, fontSize: descSize - 2 }]}>{tag}</Text>
               </View>
             ))}
           </View>
@@ -256,6 +267,7 @@ const TodoListScreen = () => {
   const { request } = useAuth();
   const t = useThemeTokens();
   const { t: tr } = useI18n();
+  const { width: windowWidth } = useWindowDimensions();
 
   const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -271,15 +283,6 @@ const TodoListScreen = () => {
     { key: 'completed', label: tr('todos.filterCompleted'), color: t.colors.statusCompleted }
   ], [tr, t.colors]);
 
-  const handleKanbanDrop = useCallback((todoId, targetColKey) => {
-    const todo = todos.find(t => t._id === todoId);
-    if (todo) {
-      const targetCompleted = targetColKey === 'completed';
-      if (todo.completed !== targetCompleted) {
-        handleToggle(todoId);
-      }
-    }
-  }, [todos, handleToggle]);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -442,6 +445,16 @@ const TodoListScreen = () => {
     }
   }, [request, loadTodos, tr]);
 
+  const handleKanbanDrop = useCallback((todoId, targetColKey) => {
+    const todo = todos.find(t => t._id === todoId);
+    if (todo) {
+      const targetCompleted = targetColKey === 'completed';
+      if (todo.completed !== targetCompleted) {
+        handleToggle(todoId);
+      }
+    }
+  }, [todos, handleToggle]);
+
   const handleDelete = useCallback(async (id) => {
     if (!id) {
       return;
@@ -523,10 +536,12 @@ const TodoListScreen = () => {
           onToggle={handleToggle}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          isKanban={false}
+          columnWidth={windowWidth}
         />
       </AnimatedListItem>
     ),
-    [t.colors, handleToggle, handleEdit, handleDelete]
+    [t.colors, handleToggle, handleEdit, handleDelete, windowWidth]
   );
 
   const getItemLayout = useCallback((_, index) => ({
@@ -539,7 +554,7 @@ const TodoListScreen = () => {
 
 
   return (
-    <Screen>
+    <Screen noScroll={viewMode === 'kanban' && !showForm}>
       <View style={[styles.container, { backgroundColor: 'transparent', flex: 1 }]}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: t.colors.text }]}>{tr('todos.screenTitle')}</Text>
@@ -826,13 +841,15 @@ const TodoListScreen = () => {
                   columns={kanbanColumns}
                   items={filteredTodos}
                   getColId={item => item.completed ? 'completed' : 'active'}
-                  renderItem={item => (
+                  renderItem={(item, layoutInfo) => (
                     <TodoItem
                       item={item}
                       colors={t.colors}
                       onToggle={handleToggle}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
+                      isKanban={layoutInfo?.isKanban}
+                      columnWidth={layoutInfo?.columnWidth}
                     />
                   )}
                   onItemDrop={handleKanbanDrop}
