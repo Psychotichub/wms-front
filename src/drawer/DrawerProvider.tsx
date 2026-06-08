@@ -97,7 +97,7 @@ const DrawerContent = ({ onItemPress, drawerOpen }) => {
         <Text style={[styles.drawerTitle, { color: t.colors.primary }]}>{tr('nav.menuTitle')}</Text>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.drawerScrollView}
         contentContainerStyle={styles.drawerScrollContent}
         showsVerticalScrollIndicator={true}

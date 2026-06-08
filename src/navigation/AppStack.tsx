@@ -134,8 +134,8 @@ const AppStack = () => {
         contentStyle: { backgroundColor: 'transparent' },
         animation: 'slide_from_right',
         headerShown: true,
-        headerStyle: { 
-          backgroundColor: isDark ? t.colors.surface : t.colors.card, 
+        headerStyle: {
+          backgroundColor: isDark ? t.colors.surface : t.colors.card,
           borderBottomColor: t.colors.border,
           borderBottomWidth: 1,
           ...Platform.select({
