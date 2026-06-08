@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Pressable, Alert, FlatList, Platform } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Pressable, Alert, FlatList, Platform, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
@@ -11,6 +11,7 @@ import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
 import AnimatedListItem from '../components/ui/AnimatedListItem';
+import KanbanBoard from '../components/ui/KanbanBoard';
 
 const TODO_ITEM_HEIGHT = 120;
 
@@ -263,6 +264,22 @@ const TodoListScreen = () => {
   const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState('');
   const [filter, setFilter] = useState('all'); // all, active, completed
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'kanban'
+
+  const kanbanColumns = useMemo(() => [
+    { key: 'active', label: tr('todos.filterActive'), color: t.colors.primary },
+    { key: 'completed', label: tr('todos.filterCompleted'), color: t.colors.statusCompleted }
+  ], [tr, t.colors]);
+
+  const handleKanbanDrop = useCallback((todoId, targetColKey) => {
+    const todo = todos.find(t => t._id === todoId);
+    if (todo) {
+      const targetCompleted = targetColKey === 'completed';
+      if (todo.completed !== targetCompleted) {
+        handleToggle(todoId);
+      }
+    }
+  }, [todos, handleToggle]);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -523,242 +540,311 @@ const TodoListScreen = () => {
 
   return (
     <Screen>
-      <FlatList
-        data={loading ? SKELETON_TODOS : filteredTodos}
-        keyExtractor={keyExtractor}
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 32 }}
-        showsVerticalScrollIndicator={false}
-        initialNumToRender={6}
-        maxToRenderPerBatch={6}
-        windowSize={7}
-        removeClippedSubviews
-        renderItem={renderTodoItem}
-        getItemLayout={getItemLayout}
-        ListHeaderComponent={
-          <>
-            <View style={styles.header}>
-              <Text style={[styles.title, { color: t.colors.text }]}>{tr('todos.screenTitle')}</Text>
+      <View style={[styles.container, { backgroundColor: 'transparent', flex: 1 }]}>
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: t.colors.text }]}>{tr('todos.screenTitle')}</Text>
+          <View style={styles.headerActions}>
+            <View style={[styles.toggleContainer, { borderColor: t.colors.border, backgroundColor: getRGBA(t.colors.card, 0.5) }]}>
               <Pressable
-                style={[styles.addBtn, { backgroundColor: t.colors.primary }]}
-                onPress={() => setShowForm(!showForm)}
+                style={[
+                  styles.toggleBtn,
+                  viewMode === 'list' && { backgroundColor: t.colors.primary }
+                ]}
+                onPress={() => setViewMode('list')}
               >
-                <Ionicons name={showForm ? "close" : "add"} size={20} color="#fff" />
-                <Text style={styles.addBtnText}>
-                  {showForm ? tr('todos.cancel') : tr('todos.addTodo')}
-                </Text>
+                <Ionicons
+                  name="list"
+                  size={16}
+                  color={viewMode === 'list' ? '#fff' : t.colors.textSecondary}
+                />
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.toggleBtn,
+                  viewMode === 'kanban' && { backgroundColor: t.colors.primary }
+                ]}
+                onPress={() => setViewMode('kanban')}
+              >
+                <Ionicons
+                  name="grid"
+                  size={16}
+                  color={viewMode === 'kanban' ? '#fff' : t.colors.textSecondary}
+                />
               </Pressable>
             </View>
 
-            {message ? (
-              <View style={[styles.messageBox, { backgroundColor: getRGBA(t.colors.primary, 0.1) }]}>
-                <Text style={[styles.messageText, { color: t.colors.text }]}>{message}</Text>
-                <Pressable onPress={() => setMessage('')}>
-                  <Ionicons name="close" size={18} color={t.colors.text} />
-                </Pressable>
-              </View>
-            ) : null}
+            <Pressable
+              style={[styles.addBtn, { backgroundColor: t.colors.primary }]}
+              onPress={() => setShowForm(!showForm)}
+            >
+              <Ionicons name={showForm ? "close" : "add"} size={20} color="#fff" />
+              <Text style={styles.addBtnText}>
+                {showForm ? tr('todos.cancel') : tr('todos.addTodo')}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
 
-            {showForm && (
-              <View style={[styles.form, { backgroundColor: getRGBA(t.colors.card, 0.5) }]}>
-                <Text style={[styles.formTitle, { color: t.colors.text }]}>
-                  {editingId ? tr('todos.editTodo') : tr('todos.newTodo')}
-                </Text>
+        {message ? (
+          <View style={[styles.messageBox, { backgroundColor: getRGBA(t.colors.primary, 0.1) }]}>
+            <Text style={[styles.messageText, { color: t.colors.text }]}>{message}</Text>
+            <Pressable onPress={() => setMessage('')}>
+              <Ionicons name="close" size={18} color={t.colors.text} />
+            </Pressable>
+          </View>
+        ) : null}
 
-                <Text style={[styles.label, { color: t.colors.text }]}>{tr('todos.labelTitle')}</Text>
-                <TextInput
-                  style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-                  placeholder={tr('todos.placeholderTitle')}
-                  value={formData.title}
-                  onChangeText={(text) => setFormData({ ...formData, title: text })}
-                  placeholderTextColor={t.colors.textSecondary}
-                />
+        {showForm ? (
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+            <View style={[styles.form, { backgroundColor: getRGBA(t.colors.card, 0.5) }]}>
+              <Text style={[styles.formTitle, { color: t.colors.text }]}>
+                {editingId ? tr('todos.editTodo') : tr('todos.newTodo')}
+              </Text>
 
-                <Text style={[styles.label, { color: t.colors.text }]}>{tr('todos.labelDescription')}</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-                  placeholder={tr('todos.placeholderDesc')}
-                  value={formData.description}
-                  onChangeText={(text) => setFormData({ ...formData, description: text })}
-                  placeholderTextColor={t.colors.textSecondary}
-                  multiline
-                  numberOfLines={3}
-                />
+              <Text style={[styles.label, { color: t.colors.text }]}>{tr('todos.labelTitle')}</Text>
+              <TextInput
+                style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                placeholder={tr('todos.placeholderTitle')}
+                value={formData.title}
+                onChangeText={(text) => setFormData({ ...formData, title: text })}
+                placeholderTextColor={t.colors.textSecondary}
+              />
 
-                <Text style={[styles.label, { color: t.colors.text }]}>{tr('todos.labelPriority')}</Text>
-                <View style={styles.roleRow}>
-                  {priorityOptions.map((option) => (
-                    <Pressable
-                      key={option.value}
-                      style={[
-                        styles.roleChip,
-                        { borderColor: t.colors.border, backgroundColor: t.colors.card },
-                        formData.priority === option.value && {
-                          borderColor: getPriorityColor(option.value, t.colors),
-                          backgroundColor: getRGBA(getPriorityColor(option.value, t.colors), 0.1)
-                        }
-                      ]}
-                      onPress={() => setFormData({ ...formData, priority: option.value })}
-                    >
-                      <Text
-                        style={[
-                          styles.roleText,
-                          { color: t.colors.text },
-                          formData.priority === option.value && { color: getPriorityColor(option.value, t.colors), fontWeight: '700' }
-                        ]}
-                      >
-                        {option.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
+              <Text style={[styles.label, { color: t.colors.text }]}>{tr('todos.labelDescription')}</Text>
+              <TextInput
+                style={[styles.input, styles.textArea, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                placeholder={tr('todos.placeholderDesc')}
+                value={formData.description}
+                onChangeText={(text) => setFormData({ ...formData, description: text })}
+                placeholderTextColor={t.colors.textSecondary}
+                multiline
+                numberOfLines={3}
+              />
 
-                <Text style={[styles.label, { color: t.colors.text }]}>{tr('todos.labelCategory')}</Text>
-                <TextInput
-                  style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-                  placeholder={tr('todos.placeholderCategory')}
-                  value={formData.category}
-                  onChangeText={(text) => setFormData({ ...formData, category: text })}
-                  placeholderTextColor={t.colors.textSecondary}
-                />
-
-                <Text style={[styles.label, { color: t.colors.text }]}>{tr('todos.labelTags')}</Text>
-                <TextInput
-                  style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-                  placeholder={tr('todos.placeholderTags')}
-                  value={formData.tags}
-                  onChangeText={(text) => setFormData({ ...formData, tags: text })}
-                  placeholderTextColor={t.colors.textSecondary}
-                />
-
-                <View style={styles.reminderSection}>
+              <Text style={[styles.label, { color: t.colors.text }]}>{tr('todos.labelPriority')}</Text>
+              <View style={styles.roleRow}>
+                {priorityOptions.map((option) => (
                   <Pressable
-                    style={styles.reminderToggle}
-                    onPress={() => setFormData({
-                      ...formData,
-                      reminder: {
-                        ...formData.reminder,
-                        enabled: !formData.reminder.enabled
+                    key={option.value}
+                    style={[
+                      styles.roleChip,
+                      { borderColor: t.colors.border, backgroundColor: t.colors.card },
+                      formData.priority === option.value && {
+                        borderColor: getPriorityColor(option.value, t.colors),
+                        backgroundColor: getRGBA(getPriorityColor(option.value, t.colors), 0.1)
                       }
-                    })}
+                    ]}
+                    onPress={() => setFormData({ ...formData, priority: option.value })}
                   >
-                    <Ionicons
-                      name={formData.reminder.enabled ? "checkbox" : "square-outline"}
-                      size={20}
-                      color={formData.reminder.enabled ? t.colors.primary : t.colors.textSecondary}
-                    />
-                    <Text style={[styles.reminderLabel, { color: t.colors.text }]}>{tr('todos.setReminder')}</Text>
+                    <Text
+                      style={[
+                        styles.roleText,
+                        { color: t.colors.text },
+                        formData.priority === option.value && { color: getPriorityColor(option.value, t.colors), fontWeight: '700' }
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
                   </Pressable>
+                ))}
+              </View>
 
-                  {formData.reminder.enabled && (
-                    <View style={styles.reminderInputs}>
-                      <View style={styles.reminderInputRow}>
-                        <Text style={[styles.miniLabel, { color: t.colors.textSecondary }]}>{tr('todos.labelDate')}</Text>
-                        <TextInput
-                          style={[styles.input, styles.reminderInput, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-                          placeholder={tr('todos.placeholderDate')}
-                          value={formData.reminder.date}
-                          onChangeText={(text) => setFormData({
-                            ...formData,
-                            reminder: { ...formData.reminder, date: text }
-                          })}
-                          placeholderTextColor={t.colors.textSecondary}
-                        />
+              <Text style={[styles.label, { color: t.colors.text }]}>{tr('todos.labelCategory')}</Text>
+              <TextInput
+                style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                placeholder={tr('todos.placeholderCategory')}
+                value={formData.category}
+                onChangeText={(text) => setFormData({ ...formData, category: text })}
+                placeholderTextColor={t.colors.textSecondary}
+              />
+
+              <Text style={[styles.label, { color: t.colors.text }]}>{tr('todos.labelTags')}</Text>
+              <TextInput
+                style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                placeholder={tr('todos.placeholderTags')}
+                value={formData.tags}
+                onChangeText={(text) => setFormData({ ...formData, tags: text })}
+                placeholderTextColor={t.colors.textSecondary}
+              />
+
+              <View style={styles.reminderSection}>
+                <Pressable
+                  style={styles.reminderToggle}
+                  onPress={() => setFormData({
+                    ...formData,
+                    reminder: {
+                      ...formData.reminder,
+                      enabled: !formData.reminder.enabled
+                    }
+                  })}
+                >
+                  <Ionicons
+                    name={formData.reminder.enabled ? "checkbox" : "square-outline"}
+                    size={20}
+                    color={formData.reminder.enabled ? t.colors.primary : t.colors.textSecondary}
+                  />
+                  <Text style={[styles.reminderLabel, { color: t.colors.text }]}>{tr('todos.setReminder')}</Text>
+                </Pressable>
+
+                {formData.reminder.enabled && (
+                  <View style={styles.reminderInputs}>
+                    <View style={styles.reminderInputRow}>
+                      <Text style={[styles.miniLabel, { color: t.colors.textSecondary }]}>{tr('todos.labelDate')}</Text>
+                      <TextInput
+                        style={[styles.input, styles.reminderInput, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                        placeholder={tr('todos.placeholderDate')}
+                        value={formData.reminder.date}
+                        onChangeText={(text) => setFormData({
+                          ...formData,
+                          reminder: { ...formData.reminder, date: text }
+                        })}
+                        placeholderTextColor={t.colors.textSecondary}
+                      />
+                    </View>
+                    <View style={styles.reminderInputRow}>
+                      <Text style={[styles.miniLabel, { color: t.colors.textSecondary }]}>{tr('todos.labelTime')}</Text>
+                      <TextInput
+                        style={[styles.input, styles.reminderInput, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                        placeholder={tr('todos.placeholderTime')}
+                        value={formData.reminder.time}
+                        onChangeText={(text) => setFormData({
+                          ...formData,
+                          reminder: { ...formData.reminder, time: text }
+                        })}
+                        placeholderTextColor={t.colors.textSecondary}
+                      />
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.formActions}>
+                <Button title={tr('todos.cancel')} onPress={resetForm} variant="secondary" />
+                <Button title={editingId ? tr('todos.updateTodo') : tr('todos.createTodo')} onPress={handleSubmit} />
+              </View>
+            </View>
+          </ScrollView>
+        ) : (
+          <>
+            {viewMode === 'list' ? (
+              <FlatList
+                data={loading ? SKELETON_TODOS : filteredTodos}
+                keyExtractor={keyExtractor}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: 32 }}
+                showsVerticalScrollIndicator={false}
+                initialNumToRender={6}
+                maxToRenderPerBatch={6}
+                windowSize={7}
+                removeClippedSubviews
+                renderItem={renderTodoItem}
+                getItemLayout={getItemLayout}
+                ListHeaderComponent={
+                  <>
+                    <View style={[styles.statsContainer, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}>
+                      <View style={styles.statItem}>
+                        <Text style={[styles.statValue, { color: t.colors.text }]}>{stats.total}</Text>
+                        <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>{tr('todos.statTotal')}</Text>
                       </View>
-                      <View style={styles.reminderInputRow}>
-                        <Text style={[styles.miniLabel, { color: t.colors.textSecondary }]}>{tr('todos.labelTime')}</Text>
-                        <TextInput
-                          style={[styles.input, styles.reminderInput, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-                          placeholder={tr('todos.placeholderTime')}
-                          value={formData.reminder.time}
-                          onChangeText={(text) => setFormData({
-                            ...formData,
-                            reminder: { ...formData.reminder, time: text }
-                          })}
-                          placeholderTextColor={t.colors.textSecondary}
-                        />
+                      <View style={styles.statItem}>
+                        <Text style={[styles.statValue, { color: t.colors.primary }]}>{stats.active}</Text>
+                        <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>{tr('todos.statActive')}</Text>
+                      </View>
+                      <View style={styles.statItem}>
+                        <Text style={[styles.statValue, { color: t.colors.success }]}>{stats.completed}</Text>
+                        <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>{tr('todos.statCompleted')}</Text>
+                      </View>
+                      <View style={styles.statItem}>
+                        <Text style={[styles.statValue, { color: t.colors.warning }]}>{stats.withReminders}</Text>
+                        <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>{tr('todos.statReminders')}</Text>
                       </View>
                     </View>
-                  )}
-                </View>
 
-                <View style={styles.formActions}>
-                  <Button title={tr('todos.cancel')} onPress={resetForm} variant="secondary" />
-                  <Button title={editingId ? tr('todos.updateTodo') : tr('todos.createTodo')} onPress={handleSubmit} />
-                </View>
+                    <View style={styles.filtersContainer}>
+                      {filterOptions.map((option) => (
+                        <Pressable
+                          key={option.value}
+                          style={[
+                            styles.filterChip,
+                            { borderColor: t.colors.border, backgroundColor: t.colors.card },
+                            filter === option.value && {
+                              borderColor: t.colors.primary,
+                              backgroundColor: getRGBA(t.colors.primary, 0.1)
+                            }
+                          ]}
+                          onPress={() => setFilter(option.value)}
+                        >
+                          <Text
+                            style={[
+                              styles.filterText,
+                              { color: t.colors.text },
+                              filter === option.value && { color: t.colors.primary, fontWeight: '700' }
+                            ]}
+                          >
+                            {option.label}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+
+                    <Text style={[styles.label, { color: t.colors.textSecondary }]}>{tr('todos.searchLabel')}</Text>
+                    <TextInput
+                      style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                      placeholder={tr('todos.searchPlaceholder')}
+                      value={searchValue}
+                      onChangeText={setSearchValue}
+                      placeholderTextColor={t.colors.textSecondary}
+                    />
+
+                    <Text style={[styles.sectionTitle, { color: t.colors.text }]}>
+                      {tr('todos.listTitle', { count: filteredTodos.length })}
+                    </Text>
+                  </>
+                }
+                ListEmptyComponent={
+                  !loading ? (
+                    <EmptyState
+                      icon="checkmark-circle-outline"
+                      title={tr('todos.emptyTitle')}
+                      subtitle={tr('todos.emptyListSubtitle')}
+                    />
+                  ) : null
+                }
+              />
+            ) : (
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.label, { color: t.colors.textSecondary }]}>{tr('todos.searchLabel')}</Text>
+                <TextInput
+                  style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
+                  placeholder={tr('todos.searchPlaceholder')}
+                  value={searchValue}
+                  onChangeText={setSearchValue}
+                  placeholderTextColor={t.colors.textSecondary}
+                />
+
+                <KanbanBoard
+                  columns={kanbanColumns}
+                  items={filteredTodos}
+                  getColId={item => item.completed ? 'completed' : 'active'}
+                  renderItem={item => (
+                    <TodoItem
+                      item={item}
+                      colors={t.colors}
+                      onToggle={handleToggle}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
+                  )}
+                  onItemDrop={handleKanbanDrop}
+                  colors={t.colors}
+                  loading={loading}
+                  tr={tr}
+                />
               </View>
             )}
-
-            <View style={[styles.statsContainer, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: t.colors.text }]}>{stats.total}</Text>
-                <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>{tr('todos.statTotal')}</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: t.colors.primary }]}>{stats.active}</Text>
-                <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>{tr('todos.statActive')}</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: t.colors.success }]}>{stats.completed}</Text>
-                <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>{tr('todos.statCompleted')}</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: t.colors.warning }]}>{stats.withReminders}</Text>
-                <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>{tr('todos.statReminders')}</Text>
-              </View>
-            </View>
-
-            <View style={styles.filtersContainer}>
-              {filterOptions.map((option) => (
-                <Pressable
-                  key={option.value}
-                  style={[
-                    styles.filterChip,
-                    { borderColor: t.colors.border, backgroundColor: t.colors.card },
-                    filter === option.value && {
-                      borderColor: t.colors.primary,
-                      backgroundColor: getRGBA(t.colors.primary, 0.1)
-                    }
-                  ]}
-                  onPress={() => setFilter(option.value)}
-                >
-                  <Text
-                    style={[
-                      styles.filterText,
-                      { color: t.colors.text },
-                      filter === option.value && { color: t.colors.primary, fontWeight: '700' }
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <Text style={[styles.label, { color: t.colors.textSecondary }]}>{tr('todos.searchLabel')}</Text>
-            <TextInput
-              style={[styles.input, { borderColor: t.colors.border, color: t.colors.text, backgroundColor: t.colors.card }]}
-              placeholder={tr('todos.searchPlaceholder')}
-              value={searchValue}
-              onChangeText={setSearchValue}
-              placeholderTextColor={t.colors.textSecondary}
-            />
-
-            <Text style={[styles.sectionTitle, { color: t.colors.text }]}>
-              {tr('todos.listTitle', { count: filteredTodos.length })}
-            </Text>
           </>
-        }
-        ListEmptyComponent={
-          !loading ? (
-            <EmptyState
-              icon="checkmark-circle-outline"
-              title={tr('todos.emptyTitle')}
-              subtitle={tr('todos.emptyListSubtitle')}
-            />
-          ) : null
-        }
-      />
+        )}
+      </View>
     </Screen>
   );
 };
@@ -766,13 +852,32 @@ const TodoListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingBottom: 32
+    paddingBottom: 8
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20
+    marginBottom: 16
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 2,
+    gap: 2
+  },
+  toggleBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   title: {
     fontSize: 24,

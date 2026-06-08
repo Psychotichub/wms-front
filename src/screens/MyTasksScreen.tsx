@@ -11,6 +11,7 @@ import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
 import AnimatedListItem from '../components/ui/AnimatedListItem';
 import Animated from 'react-native-reanimated';
+import KanbanBoard from '../components/ui/KanbanBoard';
 
 const TASK_ROW_HEIGHT = 100;
 
@@ -232,6 +233,13 @@ const MyTasksScreen = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [message, setMessage] = useState('');
   const [currentEmployeeId, setCurrentEmployeeId] = useState(null);
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'kanban'
+
+  const kanbanColumns = useMemo(() => [
+    { key: 'pending', label: tr('tasks.statusPending'), color: t.colors.statusPending },
+    { key: 'in_progress', label: tr('tasks.statusInProgress'), color: t.colors.statusInProgress },
+    { key: 'completed', label: tr('tasks.statusCompleted'), color: t.colors.statusCompleted }
+  ], [tr, t.colors]);
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
@@ -335,9 +343,37 @@ const MyTasksScreen = () => {
 
   return (
     <Screen>
-      <ScrollView style={[styles.container, { backgroundColor: 'transparent' }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent', flex: 1 }]}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: t.colors.text }]}>{tr('myTasks.screenTitle')}</Text>
+          <View style={[styles.toggleContainer, { borderColor: t.colors.border, backgroundColor: getRGBA(t.colors.card, 0.5) }]}>
+            <Pressable
+              style={[
+                styles.toggleBtn,
+                viewMode === 'list' && { backgroundColor: t.colors.primary }
+              ]}
+              onPress={() => setViewMode('list')}
+            >
+              <Ionicons
+                name="list"
+                size={16}
+                color={viewMode === 'list' ? '#fff' : t.colors.textSecondary}
+              />
+            </Pressable>
+            <Pressable
+              style={[
+                styles.toggleBtn,
+                viewMode === 'kanban' && { backgroundColor: t.colors.primary }
+              ]}
+              onPress={() => setViewMode('kanban')}
+            >
+              <Ionicons
+                name="grid"
+                size={16}
+                color={viewMode === 'kanban' ? '#fff' : t.colors.textSecondary}
+              />
+            </Pressable>
+          </View>
         </View>
 
         {message ? (
@@ -349,7 +385,7 @@ const MyTasksScreen = () => {
           </View>
         ) : null}
 
-        <View style={[styles.statsContainer, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}>
+        <View style={[styles.statsContainer, { backgroundColor: t.colors.card, borderColor: t.colors.border, marginBottom: 12 }]}>
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: t.colors.text }]}>{stats.total}</Text>
             <Text style={[styles.statLabel, { color: t.colors.textSecondary }]}>{tr('myTasks.statTotal')}</Text>
@@ -374,60 +410,87 @@ const MyTasksScreen = () => {
           )}
         </View>
 
-        <Text style={[styles.sectionTitle, { color: t.colors.text }]}>{tr('myTasks.filterByStatus')}</Text>
-        <View style={styles.roleRow}>
-          {statusOptions.map((option) => (
-            <Pressable
-              key={option.value}
-              style={[
-                styles.roleChip,
-                { borderColor: t.colors.border, backgroundColor: t.colors.card },
-                statusFilter === option.value && {
-                  borderColor: t.colors.primary,
-                  backgroundColor: getRGBA(t.colors.primary, 0.1)
-                }
-              ]}
-              onPress={() => setStatusFilter(option.value)}
-            >
-              <Text
-                style={[
-                  styles.roleText,
-                  { color: t.colors.text },
-                  statusFilter === option.value && { color: t.colors.primary, fontWeight: '700' }
-                ]}
-              >
-                {option.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        {viewMode === 'list' ? (
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+            <Text style={[styles.sectionTitle, { color: t.colors.text }]}>{tr('myTasks.filterByStatus')}</Text>
+            <View style={styles.roleRow}>
+              {statusOptions.map((option) => (
+                <Pressable
+                  key={option.value}
+                  style={[
+                    styles.roleChip,
+                    { borderColor: t.colors.border, backgroundColor: t.colors.card },
+                    statusFilter === option.value && {
+                      borderColor: t.colors.primary,
+                      backgroundColor: getRGBA(t.colors.primary, 0.1)
+                    }
+                  ]}
+                  onPress={() => setStatusFilter(option.value)}
+                >
+                  <Text
+                    style={[
+                      styles.roleText,
+                      { color: t.colors.text },
+                      statusFilter === option.value && { color: t.colors.primary, fontWeight: '700' }
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
 
-        <Text style={[styles.sectionTitle, { color: t.colors.text }]}>
-          {tr('myTasks.tasksListTitle', { count: filteredTasks.length })}
-        </Text>
+            <Text style={[styles.sectionTitle, { color: t.colors.text }]}>
+              {tr('myTasks.tasksListTitle', { count: filteredTasks.length })}
+            </Text>
 
-        <FlatList
-          data={loading ? SKELETON_TASKS : filteredTasks}
-          keyExtractor={keyExtractor}
-          scrollEnabled={false}
-          contentContainerStyle={styles.taskList}
-          initialNumToRender={6}
-          maxToRenderPerBatch={6}
-          windowSize={7}
-          removeClippedSubviews
-          renderItem={renderTaskItem}
-          getItemLayout={getItemLayout}
-          ListEmptyComponent={
-            !loading ? (
-              <EmptyState
-                icon="checkmark-done-outline"
-                title={tr('myTasks.emptyTitle')}
-                subtitle={tr('myTasks.emptySubtitle')}
-              />
-            ) : null
-          }
-        />
-      </ScrollView>
+            <FlatList
+              data={loading ? SKELETON_TASKS : filteredTasks}
+              keyExtractor={keyExtractor}
+              scrollEnabled={false}
+              contentContainerStyle={styles.taskList}
+              initialNumToRender={6}
+              maxToRenderPerBatch={6}
+              windowSize={7}
+              removeClippedSubviews
+              renderItem={renderTaskItem}
+              getItemLayout={getItemLayout}
+              ListEmptyComponent={
+                !loading ? (
+                  <EmptyState
+                    icon="checkmark-done-outline"
+                    title={tr('myTasks.emptyTitle')}
+                    subtitle={tr('myTasks.emptySubtitle')}
+                  />
+                ) : null
+              }
+            />
+          </ScrollView>
+        ) : (
+          <View style={{ flex: 1 }}>
+            <KanbanBoard
+              columns={kanbanColumns}
+              items={tasks}
+              getColId={item => item.status}
+              renderItem={item => (
+                <TaskRow
+                  item={item}
+                  colors={t.colors}
+                  onStatusUpdate={handleStatusUpdate}
+                  onViewDetails={handleViewDetails}
+                  currentEmployeeId={currentEmployeeId}
+                  tr={tr}
+                  localeTag={localeTag}
+                />
+              )}
+              onItemDrop={handleStatusUpdate}
+              colors={t.colors}
+              loading={loading}
+              tr={tr}
+            />
+          </View>
+        )}
+      </View>
     </Screen>
   );
 };
@@ -435,13 +498,27 @@ const MyTasksScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingBottom: 32
+    paddingBottom: 8
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20
+    marginBottom: 16
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 2,
+    gap: 2
+  },
+  toggleBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   title: {
     fontSize: 24,
