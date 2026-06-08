@@ -24,7 +24,8 @@ export const ROUTE_BREADCRUMB_LABELS = {
   Setting: 'Settings',
   About: 'About',
   'Global Search': 'Search',
-  'Access Denied': 'Access denied'
+  'Access Denied': 'Access denied',
+  'Requisitions': 'Requisitions'
 };
 
 export const appScreenConfig = [
@@ -129,6 +130,11 @@ export const appScreenConfig = [
   {
     name: 'Access Denied',
     getComponent: () => require('../screens/AccessDeniedScreen').default
+  },
+  {
+    name: 'Requisitions',
+    getComponent: () => require('../screens/RequisitionScreen').default,
+    drawer: { label: 'Requisitions', icon: 'cart-outline' }
   }
 ];
 
