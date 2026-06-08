@@ -14,6 +14,8 @@ import SkeletonBar from '../components/ui/SkeletonBar';
 import AnimatedListItem from '../components/ui/AnimatedListItem';
 
 const EMPLOYEE_ITEM_HEIGHT = 140;
+const SKELETON_EMPLOYEES = Array.from({ length: 4 }).map((_, idx) => ({ id: `employee-skeleton-${idx}`, __skeleton: true }));
+
 
 // Helper to convert hex to RGBA for web compatibility
 const getRGBA = (hex, alpha) => {
@@ -140,6 +142,21 @@ const EmployeeItem = React.memo(({ item, colors, onEdit, onDelete, tr }) => {
         </View>
       </View>
     </View>
+  );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item?._id === nextProps.item?._id &&
+    prevProps.item?.name === nextProps.item?.name &&
+    prevProps.item?.email === nextProps.item?.email &&
+    prevProps.item?.phone === nextProps.item?.phone &&
+    prevProps.item?.role === nextProps.item?.role &&
+    prevProps.item?.department === nextProps.item?.department &&
+    prevProps.item?.user === nextProps.item?.user &&
+    prevProps.item?.productivityMetrics?.tasksCompleted === nextProps.item?.productivityMetrics?.tasksCompleted &&
+    prevProps.item?.productivityMetrics?.totalHoursWorked === nextProps.item?.productivityMetrics?.totalHoursWorked &&
+    prevProps.item?.productivityMetrics?.efficiencyRating === nextProps.item?.productivityMetrics?.efficiencyRating &&
+    prevProps.item?.__skeleton === nextProps.item?.__skeleton &&
+    prevProps.colors === nextProps.colors
   );
 });
 EmployeeItem.displayName = 'EmployeeItem';
@@ -454,11 +471,14 @@ const EmployeeScreen = () => {
     index
   }), []);
 
+  const keyExtractor = useCallback((item) => (item.__skeleton ? item.id : item._id), []);
+
+
   return (
     <Screen>
       <FlatList
-        data={loading ? Array.from({ length: 4 }).map((_, idx) => ({ id: `employee-skeleton-${idx}`, __skeleton: true })) : filteredEmployees}
-        keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
+        data={loading ? SKELETON_EMPLOYEES : filteredEmployees}
+        keyExtractor={keyExtractor}
         style={{ flex: 1 }}
         contentContainerStyle={[styles.employeeList, { paddingBottom: 32 }]}
         showsVerticalScrollIndicator={false}

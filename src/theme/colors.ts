@@ -106,9 +106,9 @@ export const fontFamilies = {
  * Base typography — slightly wider tracking on titles for a technical read.
  */
 export const typography = {
-  h1: { fontSize: 24, fontWeight: '700', lineHeight: 32, letterSpacing: -0.2 },
-  h2: { fontSize: 20, fontWeight: '700', lineHeight: 28, letterSpacing: -0.15 },
-  h3: { fontSize: 18, fontWeight: '700', lineHeight: 24, letterSpacing: -0.1 },
-  body: { fontSize: 15, fontWeight: '500', lineHeight: 22 },
-  small: { fontSize: 13, fontWeight: '500', lineHeight: 18 }
+  h1: { fontSize: 20, fontWeight: '700', lineHeight: 26, letterSpacing: -0.2 },
+  h2: { fontSize: 17, fontWeight: '700', lineHeight: 22, letterSpacing: -0.15 },
+  h3: { fontSize: 15, fontWeight: '700', lineHeight: 20, letterSpacing: -0.1 },
+  body: { fontSize: 13.5, fontWeight: '500', lineHeight: 18 },
+  small: { fontSize: 11.5, fontWeight: '500', lineHeight: 15 }
 };

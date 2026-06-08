@@ -13,10 +13,13 @@ import Button from '../components/ui/Button';
 import AutocompleteInput from '../components/ui/AutocompleteInput';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
+import AnimatedListItem from '../components/ui/AnimatedListItem';
 import { generatePDF, generateExcel, generateHTMLTable } from '../utils/exportUtils';
 import { isOfflineForMutationQueue } from '../utils/netConnectivity';
 
 const RECEIPT_ROW_HEIGHT = 44;
+const SKELETON_RECEIPTS = Array.from({ length: 5 }).map((_, idx) => ({ id: `receipt-skeleton-${idx}`, __skeleton: true }));
+
 
 // Helper to convert hex to RGBA for web compatibility
 const getRGBA = (hex, alpha) => {
@@ -62,6 +65,16 @@ const ReceiptRow = React.memo(({ item, colors, materialUnitMap, onEdit, onDelete
         </Pressable>
       </View>
     </View>
+  );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item?._id === nextProps.item?._id &&
+    prevProps.item?.materialName === nextProps.item?.materialName &&
+    prevProps.item?.quantity === nextProps.item?.quantity &&
+    prevProps.item?.notes === nextProps.item?.notes &&
+    prevProps.item?.__skeleton === nextProps.item?.__skeleton &&
+    prevProps.colors === nextProps.colors &&
+    prevProps.materialUnitMap === nextProps.materialUnitMap
   );
 });
 ReceiptRow.displayName = 'ReceiptRow';
@@ -216,14 +229,16 @@ const ReceivedScreen = () => {
   }, [editingId, loadMaterials, loadRecords, request, resetForm]);
 
   const renderReceiptItem = useCallback(
-    ({ item }) => (
-      <ReceiptRow
-        item={item}
-        colors={t.colors}
-        materialUnitMap={materialUnitMap}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+    ({ item, index }) => (
+      <AnimatedListItem index={index}>
+        <ReceiptRow
+          item={item}
+          colors={t.colors}
+          materialUnitMap={materialUnitMap}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      </AnimatedListItem>
     ),
     [handleDelete, handleEdit, materialUnitMap, t.colors]
   );
@@ -232,6 +247,8 @@ const ReceivedScreen = () => {
     offset: RECEIPT_ROW_HEIGHT * index,
     index
   }), []);
+
+  const keyExtractor = useCallback((item) => (item.__skeleton ? item.id : item._id), []);
 
   const handleExportPDF = useCallback(async () => {
     if (filteredRecords.length === 0) {
@@ -367,8 +384,8 @@ const ReceivedScreen = () => {
 
         <View style={[styles.table, { borderColor: t.colors.border }]}>
           <FlatList
-            data={loading ? Array.from({ length: 5 }).map((_, idx) => ({ id: `receipt-skeleton-${idx}`, __skeleton: true })) : filteredRecords}
-            keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
+            data={loading ? SKELETON_RECEIPTS : filteredRecords}
+            keyExtractor={keyExtractor}
             scrollEnabled={false}
             initialNumToRender={6}
             maxToRenderPerBatch={6}

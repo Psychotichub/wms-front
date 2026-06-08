@@ -56,6 +56,9 @@ const TODO_PRIORITY_I18N = {
   urgent: 'todos.priorityUrgent'
 };
 
+const SKELETON_TODOS = Array.from({ length: 4 }).map((_, idx) => ({ id: `todo-skeleton-${idx}`, __skeleton: true }));
+
+
 const TodoItem = React.memo(({ item, colors, onToggle, onEdit, onDelete }) => {
   const { t: tr, locale } = useI18n();
   const localeTag = locale === 'es' ? 'es-ES' : 'en-US';
@@ -228,6 +231,21 @@ const TodoItem = React.memo(({ item, colors, onToggle, onEdit, onDelete }) => {
         )}
       </View>
     </View>
+  );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item?._id === nextProps.item?._id &&
+    prevProps.item?.completed === nextProps.item?.completed &&
+    prevProps.item?.completedAt === nextProps.item?.completedAt &&
+    prevProps.item?.priority === nextProps.item?.priority &&
+    prevProps.item?.title === nextProps.item?.title &&
+    prevProps.item?.description === nextProps.item?.description &&
+    prevProps.item?.category === nextProps.item?.category &&
+    prevProps.item?.reminder?.enabled === nextProps.item?.reminder?.enabled &&
+    prevProps.item?.reminder?.date === nextProps.item?.reminder?.date &&
+    JSON.stringify(prevProps.item?.tags) === JSON.stringify(nextProps.item?.tags) &&
+    prevProps.item?.__skeleton === nextProps.item?.__skeleton &&
+    prevProps.colors === nextProps.colors
   );
 });
 
@@ -500,11 +518,14 @@ const TodoListScreen = () => {
     index
   }), []);
 
+  const keyExtractor = useCallback((item) => (item.__skeleton ? item.id : item._id), []);
+
+
   return (
     <Screen>
       <FlatList
-        data={loading ? Array.from({ length: 4 }).map((_, idx) => ({ id: `todo-skeleton-${idx}`, __skeleton: true })) : filteredTodos}
-        keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
+        data={loading ? SKELETON_TODOS : filteredTodos}
+        keyExtractor={keyExtractor}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}

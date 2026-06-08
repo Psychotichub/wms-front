@@ -79,8 +79,19 @@ const DrawerContent = ({ onItemPress, drawerOpen }) => {
     navigateToRoute(item.target);
   };
 
+  const isDark = t.mode === 'dark';
+
   return (
-    <View style={[styles.drawerContent, { backgroundColor: t.colors.surface }]}>
+    <View
+      style={[
+        styles.drawerContent,
+        { backgroundColor: isDark ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.75)' },
+        Platform.OS === 'web' && {
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)'
+        }
+      ]}
+    >
       <View style={[styles.drawerHeader, { borderColor: t.colors.border }]}>
         <Image source={require('../../assets/logo.png')} style={styles.drawerLogo} resizeMode="contain" />
         <Text style={[styles.drawerTitle, { color: t.colors.primary }]}>{tr('nav.menuTitle')}</Text>

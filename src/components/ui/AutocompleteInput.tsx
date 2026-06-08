@@ -237,15 +237,15 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   input: {
-    height: 48,
+    height: 38,
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
+    paddingHorizontal: 12,
+    fontSize: 13.5,
   },
   dropdown: {
     position: 'absolute',
-    top: 52,
+    top: 42,
     left: 0,
     right: 0,
     maxHeight: 200,
@@ -266,14 +266,14 @@ const styles = StyleSheet.create({
     flexGrow: 0,
   },
   item: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
-    minHeight: 44,
+    minHeight: 34,
     justifyContent: 'center',
   },
   itemText: {
-    fontSize: 15,
+    fontSize: 13,
   },
 });
 

@@ -16,8 +16,43 @@ import { useThemeTokens } from '../theme/ThemeProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import { MAIN_TAB_ROUTE_NAMES } from '../navigation/routeConfig';
 import { resetRootToDashboardThenStackScreen } from '../navigation/stackNavigation';
+import AnimatedListItem from '../components/ui/AnimatedListItem';
+import Animated from 'react-native-reanimated';
 
 const DEBOUNCE_MS = 350;
+
+const SearchRow = React.memo(({ item, colors, onSelect }) => {
+  return (
+    <Pressable
+      onPress={() => onSelect(item)}
+      style={({ pressed }) => [
+        styles.row,
+        { borderColor: colors.border, backgroundColor: colors.card },
+        pressed && { opacity: 0.85 }
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={item.title}
+    >
+      <Animated.Text
+        sharedTransitionTag={item.type === 'task' ? `task-title-${item.id || item._id}` : undefined}
+        style={[styles.title, { color: colors.text }]}
+      >
+        {item.title}
+      </Animated.Text>
+      <Text style={[styles.sub, { color: colors.textSecondary }]}>{item.subtitle}</Text>
+    </Pressable>
+  );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item?.id === nextProps.item?.id &&
+    prevProps.item?.title === nextProps.item?.title &&
+    prevProps.item?.subtitle === nextProps.item?.subtitle &&
+    prevProps.item?.type === nextProps.item?.type &&
+    prevProps.colors === nextProps.colors
+  );
+});
+SearchRow.displayName = 'SearchRow';
+
 
 export default function GlobalSearchScreen() {
   const navigation = useNavigation();
@@ -71,6 +106,18 @@ export default function GlobalSearchScreen() {
     [navigation]
   );
 
+  const keyExtractor = useCallback((item, index) => `${item.type}-${item.id}-${index}`, []);
+
+  const renderSearchItem = useCallback(
+    ({ item, index }) => (
+      <AnimatedListItem index={index}>
+        <SearchRow item={item} colors={t.colors} onSelect={onSelect} />
+      </AnimatedListItem>
+    ),
+    [t.colors, onSelect]
+  );
+
+
   return (
     <Screen>
       <View style={styles.wrap}>
@@ -97,22 +144,11 @@ export default function GlobalSearchScreen() {
         {loading ? <ActivityIndicator color={t.colors.primary} style={styles.loader} /> : null}
         <FlatList
           data={results}
-          keyExtractor={(item, index) => `${item.type}-${item.id}-${index}`}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => onSelect(item)}
-              style={({ pressed }) => [
-                styles.row,
-                { borderColor: t.colors.border, backgroundColor: t.colors.card },
-                pressed && { opacity: 0.85 }
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={item.title}
-            >
-              <Text style={[styles.title, { color: t.colors.text }]}>{item.title}</Text>
-              <Text style={[styles.sub, { color: t.colors.textSecondary }]}>{item.subtitle}</Text>
-            </Pressable>
-          )}
+          keyExtractor={keyExtractor}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          renderItem={renderSearchItem}
           ListEmptyComponent={
             !loading && q.trim().length >= 2 ? (
               <Text style={[styles.empty, { color: t.colors.textSecondary }]}>{tr('search.noResults')}</Text>

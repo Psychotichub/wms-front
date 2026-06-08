@@ -10,8 +10,11 @@ import { useThemeTokens } from '../theme/ThemeProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
+import AnimatedListItem from '../components/ui/AnimatedListItem';
 
 const INVENTORY_ROW_HEIGHT = 50;
+const SKELETON_INVENTORY = [{ id: 'skeleton-0', __skeleton: true }, { id: 'skeleton-1', __skeleton: true }, { id: 'skeleton-2', __skeleton: true }];
+
 
 // Helper to convert hex to RGBA for web compatibility
 const getRGBA = (hex, alpha) => {
@@ -75,6 +78,16 @@ const InventoryRow = React.memo(({ item, colors }) => {
       </View>
     </View>
   );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item?.materialName === nextProps.item?.materialName &&
+    prevProps.item?.received === nextProps.item?.received &&
+    prevProps.item?.totalConsumption === nextProps.item?.totalConsumption &&
+    prevProps.item?.stock === nextProps.item?.stock &&
+    prevProps.item?.status === nextProps.item?.status &&
+    prevProps.item?.__skeleton === nextProps.item?.__skeleton &&
+    prevProps.colors === nextProps.colors
+  );
 });
 InventoryRow.displayName = 'InventoryRow';
 
@@ -119,6 +132,26 @@ const InventoryScreen = () => {
     );
   }, [inventory, searchValue]);
 
+  const keyExtractor = useCallback((item, index) => item.materialName || item.id || `inventory-${index}`, []);
+
+  const renderInventoryItem = useCallback(
+    ({ item, index }) => (
+      <AnimatedListItem index={index}>
+        <InventoryRow
+          item={item}
+          colors={t.colors}
+        />
+      </AnimatedListItem>
+    ),
+    [t.colors]
+  );
+
+  const getItemLayout = useCallback((_, index) => ({
+    length: INVENTORY_ROW_HEIGHT,
+    offset: INVENTORY_ROW_HEIGHT * index,
+    index
+  }), []);
+
   if (!hasSite) {
     return (
       <Screen>
@@ -128,7 +161,7 @@ const InventoryScreen = () => {
   }
 
   const displayInventory = loading && inventory.length === 0
-    ? [{ __skeleton: true }, { __skeleton: true }, { __skeleton: true }]
+    ? SKELETON_INVENTORY
     : filteredInventory;
 
   return (
@@ -152,12 +185,8 @@ const InventoryScreen = () => {
               <FlatList
                 data={displayInventory}
                 scrollEnabled={false}
-                keyExtractor={(item, index) => item.materialName || `inventory-${index}`}
-                getItemLayout={(_, index) => ({
-                  length: INVENTORY_ROW_HEIGHT,
-                  offset: INVENTORY_ROW_HEIGHT * index,
-                  index
-                })}
+                keyExtractor={keyExtractor}
+                getItemLayout={getItemLayout}
                 removeClippedSubviews={Platform.OS !== 'web'}
                 ListHeaderComponent={
                   <View
@@ -183,12 +212,7 @@ const InventoryScreen = () => {
                     />
                   ) : null
                 }
-                renderItem={({ item }) => (
-                  <InventoryRow
-                    item={item}
-                    colors={t.colors}
-                  />
-                )}
+                renderItem={renderInventoryItem}
               />
             </View>
         </View>

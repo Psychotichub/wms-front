@@ -132,6 +132,7 @@ const AppStack = () => {
       initialRouteName="MainTabs"
       screenOptions={({ navigation }) => ({
         contentStyle: { backgroundColor: 'transparent' },
+        animation: 'slide_from_right',
         headerShown: true,
         headerStyle: { 
           backgroundColor: isDark ? t.colors.surface : t.colors.card, 
@@ -141,7 +142,10 @@ const AppStack = () => {
             web: {
               height: 48,
               minHeight: 48,
-              maxHeight: 48
+              maxHeight: 48,
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              backgroundColor: isDark ? 'rgba(15, 23, 42, 0.75)' : 'rgba(255, 255, 255, 0.75)'
             }
           })
         },

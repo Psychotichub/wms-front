@@ -12,6 +12,7 @@ import AutocompleteInput from '../components/ui/AutocompleteInput';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
 import AnimatedListItem from '../components/ui/AnimatedListItem';
+import Animated from 'react-native-reanimated';
 
 const TASK_ROW_HEIGHT = 80;
 
@@ -70,6 +71,9 @@ const TASK_PRIORITY_I18N = {
   urgent: 'tasks.priorityUrgent'
 };
 
+const SKELETON_TASKS = Array.from({ length: 4 }).map((_, idx) => ({ id: `task-skeleton-${idx}`, __skeleton: true }));
+
+
 const TaskRow = React.memo(({ item, colors, onEdit, onViewDetails, tr }) => {
   if (item.__skeleton) {
     return (
@@ -92,9 +96,13 @@ const TaskRow = React.memo(({ item, colors, onEdit, onViewDetails, tr }) => {
     <View style={[styles.taskCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
       <View style={styles.taskHeader}>
         <View style={styles.taskTitleRow}>
-          <Text style={[styles.taskTitle, { color: colors.text }]} numberOfLines={1}>
+          <Animated.Text
+            sharedTransitionTag={`task-title-${item._id}`}
+            style={[styles.taskTitle, { color: colors.text }]}
+            numberOfLines={1}
+          >
             {item.title}
-          </Text>
+          </Animated.Text>
           <View style={[styles.priorityBadge, { backgroundColor: getRGBA(priorityColor, 0.15), borderColor: priorityColor }]}>
             <Text style={[styles.priorityText, { color: priorityColor }]}>
               {(TASK_PRIORITY_I18N[item.priority] ? tr(TASK_PRIORITY_I18N[item.priority]) : item.priority).toUpperCase()}
@@ -151,8 +159,21 @@ const TaskRow = React.memo(({ item, colors, onEdit, onViewDetails, tr }) => {
       </View>
     </View>
   );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item?._id === nextProps.item?._id &&
+    prevProps.item?.status === nextProps.item?.status &&
+    prevProps.item?.priority === nextProps.item?.priority &&
+    prevProps.item?.title === nextProps.item?.title &&
+    prevProps.item?.description === nextProps.item?.description &&
+    prevProps.item?.assignedTo?.name === nextProps.item?.assignedTo?.name &&
+    prevProps.item?.dueDate === nextProps.item?.dueDate &&
+    prevProps.item?.__skeleton === nextProps.item?.__skeleton &&
+    prevProps.colors === nextProps.colors
+  );
 });
 TaskRow.displayName = 'TaskRow';
+
 
 const TaskScreen = () => {
   const { request, user } = useAuth();
@@ -371,6 +392,9 @@ const TaskScreen = () => {
     index
   }), []);
 
+  const keyExtractor = useCallback((item) => (item.__skeleton ? item.id : item._id), []);
+
+
   if (!isAdmin) {
     return (
       <Screen>
@@ -386,8 +410,8 @@ const TaskScreen = () => {
     <Screen>
       <FlatList
         style={[styles.container, { backgroundColor: 'transparent' }]}
-        data={loading ? Array.from({ length: 4 }).map((_, idx) => ({ id: `task-skeleton-${idx}`, __skeleton: true })) : filteredTasks}
-        keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
+        data={loading ? SKELETON_TASKS : filteredTasks}
+        keyExtractor={keyExtractor}
         contentContainerStyle={{ paddingBottom: 32 }}
         initialNumToRender={6}
         maxToRenderPerBatch={6}

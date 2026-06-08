@@ -12,8 +12,14 @@ import { elevation } from '../theme/elevation';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
+import AnimatedListItem from '../components/ui/AnimatedListItem';
 
 const USER_ROW_HEIGHT = 48;
+
+const SKELETON_DATA = Array.from({ length: 4 }).map((_, idx) => ({
+  id: `user-skeleton-${idx}`,
+  __skeleton: true,
+}));
 
 // Helper to convert hex to RGBA for web compatibility
 const getRGBA = (hex, alpha) => {
@@ -69,6 +75,18 @@ const UserRow = React.memo(({ item, colors, onSelectUser, onDelete }) => {
         </Pressable>
       </View>
     </View>
+  );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item._id === nextProps.item._id &&
+    prevProps.item.name === nextProps.item.name &&
+    prevProps.item.email === nextProps.item.email &&
+    prevProps.item.role === nextProps.item.role &&
+    prevProps.item.__skeleton === nextProps.item.__skeleton &&
+    prevProps.colors.primary === nextProps.colors.primary &&
+    prevProps.colors.danger === nextProps.colors.danger &&
+    prevProps.colors.text === nextProps.colors.text &&
+    prevProps.colors.border === nextProps.colors.border
   );
 });
 UserRow.displayName = 'UserRow';
@@ -210,16 +228,20 @@ const CreateUserScreen = () => {
   }, [loadUsers, request, tr]);
 
   const renderUserItem = useCallback(
-    ({ item }) => (
-      <UserRow
-        item={item}
-        colors={t.colors}
-        onSelectUser={setSelectedUser}
-        onDelete={handleDeleteUser}
-      />
+    ({ item, index }) => (
+      <AnimatedListItem index={index}>
+        <UserRow
+          item={item}
+          colors={t.colors}
+          onSelectUser={setSelectedUser}
+          onDelete={handleDeleteUser}
+        />
+      </AnimatedListItem>
     ),
     [handleDeleteUser, t.colors]
   );
+  const keyExtractor = useCallback((item) => (item.__skeleton ? item.id : item._id), []);
+
   const getItemLayout = useCallback((_, index) => ({
     length: USER_ROW_HEIGHT,
     offset: USER_ROW_HEIGHT * index,
@@ -299,13 +321,13 @@ const CreateUserScreen = () => {
             <Text style={[styles.cell, styles.headerCell, { color: t.colors.text, flex: 2 }]}>{tr('createUser.colAction')}</Text>
           </View>
           <FlatList
-            data={loading ? Array.from({ length: 4 }).map((_, idx) => ({ id: `user-skeleton-${idx}`, __skeleton: true })) : users}
-            keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
+            data={loading ? SKELETON_DATA : users}
+            keyExtractor={keyExtractor}
             scrollEnabled={false}
             initialNumToRender={6}
-            maxToRenderPerBatch={6}
-            windowSize={7}
-            removeClippedSubviews
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={Platform.OS === 'android'}
             renderItem={renderUserItem}
             getItemLayout={getItemLayout}
           />

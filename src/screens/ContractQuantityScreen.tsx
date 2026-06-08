@@ -12,8 +12,15 @@ import Button from '../components/ui/Button';
 import AutocompleteInput from '../components/ui/AutocompleteInput';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
+import AnimatedListItem from '../components/ui/AnimatedListItem';
 
 const CONTRACT_ROW_HEIGHT = 50;
+
+const SKELETON_DATA = [
+  { id: 'contract-skeleton-1', __skeleton: true },
+  { id: 'contract-skeleton-2', __skeleton: true },
+  { id: 'contract-skeleton-3', __skeleton: true }
+];
 
 // Helper to convert hex to RGBA for web compatibility
 const getRGBA = (hex, alpha) => {
@@ -107,6 +114,24 @@ const ContractRow = React.memo(({ item, colors, onEdit, onDelete, isAdmin }) => 
         </View>
       )}
     </View>
+  );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item._id === nextProps.item._id &&
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.item.materialName === nextProps.item.materialName &&
+    prevProps.item.contractQuantity === nextProps.item.contractQuantity &&
+    prevProps.item.totalConsumption === nextProps.item.totalConsumption &&
+    prevProps.item.restQuantity === nextProps.item.restQuantity &&
+    prevProps.item.status === nextProps.item.status &&
+    prevProps.item.__skeleton === nextProps.item.__skeleton &&
+    prevProps.isAdmin === nextProps.isAdmin &&
+    prevProps.colors.primary === nextProps.colors.primary &&
+    prevProps.colors.danger === nextProps.colors.danger &&
+    prevProps.colors.success === nextProps.colors.success &&
+    prevProps.colors.warning === nextProps.colors.warning &&
+    prevProps.colors.text === nextProps.colors.text &&
+    prevProps.colors.border === nextProps.colors.border
   );
 });
 ContractRow.displayName = 'ContractRow';
@@ -283,6 +308,20 @@ const ContractQuantityScreen = () => {
 
   const materialNames = useMemo(() => materialOptions.map(opt => opt.label), [materialOptions]);
 
+  const keyExtractor = useCallback((item, index) => item.id || item._id || `contract-${index}`, []);
+
+  const renderContractItem = useCallback(({ item, index }) => (
+    <AnimatedListItem index={index}>
+      <ContractRow
+        item={item}
+        colors={t.colors}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        isAdmin={isAdmin}
+      />
+    </AnimatedListItem>
+  ), [handleEdit, handleDelete, isAdmin, t.colors]);
+
   if (!hasSite) {
     return (
       <Screen>
@@ -292,7 +331,7 @@ const ContractQuantityScreen = () => {
   }
 
   const displayContracts = loading && contracts.length === 0
-    ? [{ __skeleton: true }, { __skeleton: true }, { __skeleton: true }]
+    ? SKELETON_DATA
     : filteredContracts;
 
   return (
@@ -383,13 +422,16 @@ const ContractQuantityScreen = () => {
               <FlatList
                 data={displayContracts}
                 scrollEnabled={false}
-                keyExtractor={(item, index) => item.id || item._id || `contract-${index}`}
+                keyExtractor={keyExtractor}
                 getItemLayout={(_, index) => ({
                   length: CONTRACT_ROW_HEIGHT,
                   offset: CONTRACT_ROW_HEIGHT * index,
                   index
                 })}
-                removeClippedSubviews={Platform.OS !== 'web'}
+                removeClippedSubviews={Platform.OS === 'android'}
+                initialNumToRender={6}
+                maxToRenderPerBatch={10}
+                windowSize={5}
                 ListHeaderComponent={
                   <View
                     style={[
@@ -415,15 +457,7 @@ const ContractQuantityScreen = () => {
                     />
                   ) : null
                 }
-                renderItem={({ item }) => (
-                  <ContractRow
-                    item={item}
-                    colors={t.colors}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    isAdmin={isAdmin}
-                  />
-                )}
+                renderItem={renderContractItem}
               />
             </View>
         </View>

@@ -24,11 +24,15 @@ export const createApiClient = ({
   logError,
   isDev
 }) => {
+  const cache = new Map();
+  const CACHE_TTL_MS = 5000;
+
   const request = async (path, options = {}, retryCount = 0) => {
     const {
       __timeoutMs,
       __didRefresh,
       __suppress401Log,
+      __bypassCache,
       ...fetchOptions
     } = options;
 
@@ -41,6 +45,20 @@ export const createApiClient = ({
     // If a refresh is in progress, queue this request until it finishes
     if (waitForRefreshInFlight) {
       await waitForRefreshInFlight();
+    }
+
+    const method = (fetchOptions.method || 'GET').toUpperCase();
+    const isGet = method === 'GET';
+    const cacheKey = `${path}:${JSON.stringify(fetchOptions.body || '')}`;
+
+    if (isGet && !__bypassCache) {
+      const cached = cache.get(cacheKey);
+      if (cached && cached.expiry > Date.now()) {
+        if (isDev) {
+          console.log(`[Cache Hit] ${path}`);
+        }
+        return cached.data;
+      }
     }
 
     const headers = {
@@ -77,7 +95,7 @@ export const createApiClient = ({
       }
       
       const response = await fetch(requestUrl, {
-        ...options,
+        ...fetchOptions,
         body: requestBody,
         headers,
         signal: controller.signal
@@ -257,6 +275,15 @@ export const createApiClient = ({
           error.requiresVerification = true;
         }
         throw error;
+      }
+
+      if (isGet) {
+        cache.set(cacheKey, { data, expiry: Date.now() + CACHE_TTL_MS });
+      } else {
+        if (isDev) {
+          console.log(`[Cache Invalidation] Clearing cache due to write request: ${method} ${path}`);
+        }
+        cache.clear();
       }
 
       return data;

@@ -12,6 +12,7 @@ import {
   TextInput,
   Platform
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
@@ -323,7 +324,12 @@ const TaskDetailScreen = () => {
         <View style={[styles.taskCard, { backgroundColor: t.colors.card, borderColor: t.colors.border }]}>
           {/* Title and Status */}
           <View style={styles.titleRow}>
-            <Text style={[styles.taskTitle, { color: t.colors.text }]}>{task.title}</Text>
+            <Animated.Text
+              sharedTransitionTag={`task-title-${taskId}`}
+              style={[styles.taskTitle, { color: t.colors.text }]}
+            >
+              {task.title}
+            </Animated.Text>
             <View style={[styles.statusBadge, { backgroundColor: getRGBA(statusColor, 0.15), borderColor: statusColor }]}>
               <Text style={[styles.statusText, { color: statusColor }]}>
                 {(TASK_STATUS_I18N[task.status] ? tr(TASK_STATUS_I18N[task.status]) : task.status.replace('_', ' ')).toUpperCase()}

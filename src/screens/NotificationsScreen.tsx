@@ -21,6 +21,8 @@ import AnimatedListItem from '../components/ui/AnimatedListItem';
 import { navigateFromNotification } from '../utils/notificationNavigation';
 
 const NOTIFICATION_ITEM_HEIGHT = 120;
+const SKELETON_NOTIFS = Array.from({ length: 4 }).map((_, idx) => ({ id: `skeleton-${idx}`, __skeleton: true }));
+
 
 // Helper to convert hex to RGBA for web compatibility
 const getRGBA = (hex, alpha) => {
@@ -163,6 +165,18 @@ const NotificationItem = React.memo(({ item, colors, onPress }) => {
       )}
     </Pressable>
   );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item?._id === nextProps.item?._id &&
+    prevProps.item?.status === nextProps.item?.status &&
+    prevProps.item?.title === nextProps.item?.title &&
+    prevProps.item?.message === nextProps.item?.message &&
+    prevProps.item?.type === nextProps.item?.type &&
+    prevProps.item?.createdAt === nextProps.item?.createdAt &&
+    prevProps.item?.sender?.name === nextProps.item?.sender?.name &&
+    prevProps.item?.__skeleton === nextProps.item?.__skeleton &&
+    prevProps.colors === nextProps.colors
+  );
 });
 NotificationItem.displayName = 'NotificationItem';
 
@@ -181,7 +195,7 @@ const NotificationsScreen = () => {
   const isLoading = refreshing && notifications.length === 0;
   const listData = useMemo(() => {
     if (isLoading) {
-      return Array.from({ length: 4 }).map((_, idx) => ({ id: `skeleton-${idx}`, __skeleton: true }));
+      return SKELETON_NOTIFS;
     }
     return notifications;
   }, [isLoading, notifications]);
@@ -237,6 +251,9 @@ const NotificationsScreen = () => {
     index
   }), []);
 
+  const keyExtractor = useCallback((item) => (item.__skeleton ? item.id : item._id), []);
+
+
   return (
     <Screen>
       <View style={styles.container}>
@@ -267,7 +284,7 @@ const NotificationsScreen = () => {
         {/* Notifications List */}
         <FlatList
           data={listData}
-          keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
+          keyExtractor={keyExtractor}
           style={styles.notificationsList}
           showsVerticalScrollIndicator={false}
           refreshControl={

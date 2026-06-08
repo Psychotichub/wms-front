@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Pressable, FlatList } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Pressable, FlatList, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
@@ -12,8 +12,14 @@ import Button from '../components/ui/Button';
 import AutocompleteInput from '../components/ui/AutocompleteInput';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
+import AnimatedListItem from '../components/ui/AnimatedListItem';
 
 const MATERIAL_ROW_HEIGHT = 44;
+
+const SKELETON_DATA = Array.from({ length: 5 }).map((_, idx) => ({
+  id: `material-skeleton-${idx}`,
+  __skeleton: true,
+}));
 
 // Helper to convert hex to RGBA for web compatibility
 const getRGBA = (hex, alpha) => {
@@ -66,6 +72,20 @@ const MaterialRow = React.memo(({ item, colors, onEdit, onDelete }) => {
         </Pressable>
       </View>
     </View>
+  );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item._id === nextProps.item._id &&
+    prevProps.item.name === nextProps.item.name &&
+    prevProps.item.unit === nextProps.item.unit &&
+    prevProps.item.materialPrice === nextProps.item.materialPrice &&
+    prevProps.item.labourPrice === nextProps.item.labourPrice &&
+    prevProps.item.price === nextProps.item.price &&
+    prevProps.item.__skeleton === nextProps.item.__skeleton &&
+    prevProps.colors.primary === nextProps.colors.primary &&
+    prevProps.colors.danger === nextProps.colors.danger &&
+    prevProps.colors.text === nextProps.colors.text &&
+    prevProps.colors.border === nextProps.colors.border
   );
 });
 MaterialRow.displayName = 'MaterialRow';
@@ -183,16 +203,20 @@ const AddMaterialScreen = () => {
   }, [editingId, loadMaterials, request]);
 
   const renderMaterialItem = useCallback(
-    ({ item }) => (
-      <MaterialRow
-        item={item}
-        colors={t.colors}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+    ({ item, index }) => (
+      <AnimatedListItem index={index}>
+        <MaterialRow
+          item={item}
+          colors={t.colors}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      </AnimatedListItem>
     ),
     [handleDelete, handleEdit, t.colors]
   );
+  const keyExtractor = useCallback((item) => (item.__skeleton ? item.id : item._id), []);
+
   const getItemLayout = useCallback((_, index) => ({
     length: MATERIAL_ROW_HEIGHT,
     offset: MATERIAL_ROW_HEIGHT * index,
@@ -296,13 +320,13 @@ const AddMaterialScreen = () => {
               <Text style={[styles.cell, styles.headerCell, { color: t.colors.text }]}>{tr('materials.colAction')}</Text>
             </View>
             <FlatList
-              data={loading ? Array.from({ length: 5 }).map((_, idx) => ({ id: `material-skeleton-${idx}`, __skeleton: true })) : filteredMaterials}
-              keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
+              data={loading ? SKELETON_DATA : filteredMaterials}
+              keyExtractor={keyExtractor}
               scrollEnabled={false}
               initialNumToRender={6}
-              maxToRenderPerBatch={6}
-              windowSize={7}
-              removeClippedSubviews
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews={Platform.OS === 'android'}
               renderItem={renderMaterialItem}
               getItemLayout={getItemLayout}
             />

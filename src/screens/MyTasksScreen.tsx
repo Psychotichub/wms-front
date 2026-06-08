@@ -9,8 +9,26 @@ import { useThemeTokens } from '../theme/ThemeProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import EmptyState from '../components/ui/EmptyState';
 import SkeletonBar from '../components/ui/SkeletonBar';
+import AnimatedListItem from '../components/ui/AnimatedListItem';
+import Animated from 'react-native-reanimated';
 
 const TASK_ROW_HEIGHT = 100;
+
+const TASK_STATUS_I18N = {
+  pending: 'tasks.statusPending',
+  in_progress: 'tasks.statusInProgress',
+  completed: 'tasks.statusCompleted',
+  cancelled: 'tasks.statusCancelled'
+};
+
+const TASK_PRIORITY_I18N = {
+  low: 'tasks.priorityLow',
+  medium: 'tasks.priorityMedium',
+  high: 'tasks.priorityHigh',
+  urgent: 'tasks.priorityUrgent'
+};
+
+const SKELETON_TASKS = Array.from({ length: 4 }).map((_, idx) => ({ id: `task-skeleton-${idx}`, __skeleton: true }));
 
 // Helper to convert hex to RGBA for web compatibility
 const getRGBA = (hex, alpha) => {
@@ -53,7 +71,7 @@ const getPriorityColor = (priority, colors) => {
   }
 };
 
-const TaskRow = React.memo(({ item, colors, onStatusUpdate, onViewDetails, currentEmployeeId }) => {
+const TaskRow = React.memo(({ item, colors, onStatusUpdate, onViewDetails, currentEmployeeId, tr, localeTag }) => {
   if (item.__skeleton) {
     return (
       <View style={[styles.taskCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
@@ -81,9 +99,13 @@ const TaskRow = React.memo(({ item, colors, onStatusUpdate, onViewDetails, curre
     <View style={[styles.taskCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
       <View style={styles.taskHeader}>
         <View style={styles.taskTitleRow}>
-          <Text style={[styles.taskTitle, { color: colors.text }]} numberOfLines={1}>
+          <Animated.Text
+            sharedTransitionTag={`task-title-${item._id}`}
+            style={[styles.taskTitle, { color: colors.text }]}
+            numberOfLines={1}
+          >
             {item.title}
-          </Text>
+          </Animated.Text>
           <View style={[styles.priorityBadge, { backgroundColor: getRGBA(priorityColor, 0.15), borderColor: priorityColor }]}>
             <Text style={[styles.priorityText, { color: priorityColor }]}>
               {(TASK_PRIORITY_I18N[item.priority] ? tr(TASK_PRIORITY_I18N[item.priority]) : item.priority).toUpperCase()}
@@ -178,8 +200,25 @@ const TaskRow = React.memo(({ item, colors, onStatusUpdate, onViewDetails, curre
       </View>
     </View>
   );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item?._id === nextProps.item?._id &&
+    prevProps.item?.status === nextProps.item?.status &&
+    prevProps.item?.priority === nextProps.item?.priority &&
+    prevProps.item?.title === nextProps.item?.title &&
+    prevProps.item?.description === nextProps.item?.description &&
+    prevProps.item?.dueDate === nextProps.item?.dueDate &&
+    prevProps.item?.notes === nextProps.item?.notes &&
+    prevProps.item?.estimatedHours === nextProps.item?.estimatedHours &&
+    prevProps.item?.category === nextProps.item?.category &&
+    prevProps.item?.__skeleton === nextProps.item?.__skeleton &&
+    prevProps.colors === nextProps.colors &&
+    prevProps.currentEmployeeId === nextProps.currentEmployeeId &&
+    prevProps.localeTag === nextProps.localeTag
+  );
 });
 TaskRow.displayName = 'TaskRow';
+
 
 const MyTasksScreen = () => {
   const { request, user } = useAuth();
@@ -272,16 +311,20 @@ const MyTasksScreen = () => {
     navigation.navigate('Task Detail', { taskId });
   }, [navigation]);
 
-  const renderTaskItem = useCallback(({ item }) => (
-    <TaskRow
-      item={item}
-      colors={t.colors}
-      onStatusUpdate={handleStatusUpdate}
-      onViewDetails={handleViewDetails}
-      currentEmployeeId={currentEmployeeId}
-      tr={tr}
-      localeTag={localeTag}
-    />
+  const keyExtractor = useCallback((item) => (item.__skeleton ? item.id : item._id), []);
+
+  const renderTaskItem = useCallback(({ item, index }) => (
+    <AnimatedListItem index={index}>
+      <TaskRow
+        item={item}
+        colors={t.colors}
+        onStatusUpdate={handleStatusUpdate}
+        onViewDetails={handleViewDetails}
+        currentEmployeeId={currentEmployeeId}
+        tr={tr}
+        localeTag={localeTag}
+      />
+    </AnimatedListItem>
   ), [t.colors, handleStatusUpdate, handleViewDetails, currentEmployeeId, tr, localeTag]);
 
   const getItemLayout = useCallback((_, index) => ({
@@ -364,8 +407,8 @@ const MyTasksScreen = () => {
         </Text>
 
         <FlatList
-          data={loading ? Array.from({ length: 4 }).map((_, idx) => ({ id: `task-skeleton-${idx}`, __skeleton: true })) : filteredTasks}
-          keyExtractor={(item) => (item.__skeleton ? item.id : item._id)}
+          data={loading ? SKELETON_TASKS : filteredTasks}
+          keyExtractor={keyExtractor}
           scrollEnabled={false}
           contentContainerStyle={styles.taskList}
           initialNumToRender={6}

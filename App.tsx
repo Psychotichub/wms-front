@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler';
+import './src/theme/styleSheetScaler';
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import AppProviders from './src/providers/AppProviders';

@@ -57,27 +57,28 @@ const Input = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   label: {
-    marginBottom: 6,
+    marginBottom: 4,
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 12.5,
   },
   input: {
     borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 16,
-    minHeight: 48,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    fontSize: 13.5,
+    minHeight: 38,
   },
   multiline: {
-    minHeight: 100,
+    minHeight: 80,
     textAlignVertical: 'top',
   },
   error: {
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 11,
+    marginTop: 3,
   },
 });
 
